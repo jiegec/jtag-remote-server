@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.12)
 project(local-xvc)
 
+find_package(PkgConfig)
+pkg_check_modules(FTDI REQUIRED libftdi1)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS "-fsanitize=address ${CMAKE_CXX_FLAGS}")
 add_executable(main main.cpp)
+target_link_libraries(main ${FTDI_LDFLAGS})
+target_include_directories(main PUBLIC ${FTDI_INCLUDE_DIRS})
