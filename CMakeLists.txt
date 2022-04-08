@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(local-xvc)
+project(jtag-xvc-rbb)
 
 find_package(PkgConfig)
 pkg_check_modules(FTDI REQUIRED libftdi1)
