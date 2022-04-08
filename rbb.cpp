@@ -5,6 +5,7 @@
 #include <netinet/tcp.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <vector>
 
 int listen_fd = -1;
 int client_fd = -1;
@@ -48,23 +49,48 @@ int jtag_rbb_init() {
   return 0;
 }
 
+std::vector<unsigned char> jtag_write_buffer;
+unsigned char jtag_last_write_data;
+
+void jtag_write_xfer() {
+  int written = 0;
+  while (written < jtag_write_buffer.size()) {
+    written += ftdi_write_data(ftdi, &jtag_write_buffer[written],
+                               jtag_write_buffer.size() - written);
+  }
+
+  int read = 0;
+  while (read < jtag_write_buffer.size()) {
+    read += ftdi_read_data(ftdi, &jtag_write_buffer[read],
+                           jtag_write_buffer.size() - read);
+  }
+
+  printf("Flushed write buffer\n");
+}
+
 void jtag_write(int tck, int tms, int tdi) {
   if (ftdi) {
-    unsigned char buf[] = {
-        (unsigned char)((tck << 0) | (tdi << 1) | (tms << 3))};
-    while (ftdi_write_data(ftdi, buf, 1) != 1)
-      ;
-    printf("Write TCK=%d TMS=%d TDI=%d\n", tck, tms, tdi);
+    unsigned char data = (tck << 0) | (tdi << 1) | (tms << 3);
+    jtag_last_write_data = data;
+    jtag_write_buffer.push_back(data);
+
+    if (jtag_write_buffer.size() >= 16) {
+      jtag_write_xfer();
+      jtag_write_buffer.clear();
+    }
   }
 }
 
 int jtag_read() {
   unsigned char buf[1] = {};
   if (ftdi) {
-    while (ftdi_read_data(ftdi, buf, 1) != 1)
-      ;
-    int res = (buf[0] >> 2) & 1;
-    printf("Read %d(%x)\n", res, buf[0]);
+    jtag_write_buffer.push_back(jtag_last_write_data);
+    jtag_write_xfer();
+
+    int res = (jtag_write_buffer[jtag_write_buffer.size() - 1] >> 2) & 1;
+    printf("Read %d\n", res);
+
+    jtag_write_buffer.clear();
     return res;
   } else {
     return 0;
@@ -141,8 +167,10 @@ void jtag_init() {
   assert(ret == 0);
   ret = ftdi_usb_open(ftdi, 0x0403, 0x6011);
   assert(ret == 0);
+  ret = ftdi_set_baudrate(ftdi, 115200);
+  assert(ret == 0);
   // D0, D1, D3 output, D2 input 0b1011
-  ret = ftdi_set_bitmode(ftdi, 0x0b, BITMODE_BITBANG);
+  ret = ftdi_set_bitmode(ftdi, 0x0b, BITMODE_SYNCBB);
   assert(ret == 0);
 }
 
