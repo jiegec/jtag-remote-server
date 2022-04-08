@@ -92,6 +92,45 @@ JtagState next_state(JtagState cur, int bit) {
   }
 }
 
+const char *state_to_string(JtagState state) {
+  switch (state) {
+  case TestLogicReset:
+    return "TestLogicReset";
+  case RunTestIdle:
+    return "RunTestIdle";
+  case SelectDRScan:
+    return "SelectDRScan";
+  case CaptureDR:
+    return "CaptureDR";
+  case ShiftDR:
+    return "ShiftDR";
+  case Exit1DR:
+    return "Exit1DR";
+  case PauseDR:
+    return "PauseDR";
+  case Exit2DR:
+    return "Exit2DR";
+  case UpdateDR:
+    return "UpdateDR";
+  case SelectIRScan:
+    return "SelectIRScan";
+  case CaptureIR:
+    return "CaptureIR";
+  case ShiftIR:
+    return "ShiftIR";
+  case Exit1IR:
+    return "Exit1IR";
+  case PauseIR:
+    return "PauseIR";
+  case Exit2IR:
+    return "Exit2IR";
+  case UpdateIR:
+    return "UpdateIR";
+  default:
+    assert(false);
+  }
+}
+
 void print_bitvec(unsigned char *data, int bits) {
   for (int i = 0; i < bits; i++) {
     int off = i % 8;
@@ -178,7 +217,7 @@ int main(int argc, char *argv[]) {
         printf("getinfo:\n");
         assert(sread(client_fd, buffer, strlen("tinfo:")) >= 0);
 
-        char info[] = "xvcServer_v1.0:2048\n";
+        char info[] = "xvcServer_v1.0:128\n";
         assert(swrite(client_fd, (char *)info, strlen(info)) >= 0);
       } else if (memcmp(buffer, "se", 2) == 0) {
         printf("settck:");
@@ -212,7 +251,8 @@ int main(int argc, char *argv[]) {
         for (int i = 0; i < bits; i++) {
           uint8_t tms_bit = (tms[i / 8] >> (i % 8)) & 0x1;
           JtagState new_state = next_state(state, tms_bit);
-          if (state != ShiftDR && new_state == ShiftDR) {
+          if ((state != ShiftDR && new_state == ShiftDR) ||
+              (state != ShiftIR && new_state == ShiftIR)) {
             Region region;
             region.is_tms = true;
             region.begin = shift_pos;
@@ -220,7 +260,8 @@ int main(int argc, char *argv[]) {
             regions.push_back(region);
 
             shift_pos = i + 1;
-          } else if (state == ShiftDR && new_state != ShiftDR) {
+          } else if ((state == ShiftDR && new_state != ShiftDR) ||
+                     (state == ShiftIR && new_state != ShiftIR)) {
             // end
             Region region;
             region.is_tms = false;
@@ -231,13 +272,14 @@ int main(int argc, char *argv[]) {
             shift_pos = i;
           }
           if (state != new_state) {
-            printf("state %d -> %d\n", state, new_state);
+            printf("state %s -> %s\n", state_to_string(state),
+                   state_to_string(new_state));
           }
           state = new_state;
         }
 
         Region region;
-        region.is_tms = true;
+        region.is_tms = state != ShiftDR && state != ShiftIR;
         region.begin = shift_pos;
         region.end = bits;
         regions.push_back(region);
@@ -249,7 +291,7 @@ int main(int argc, char *argv[]) {
             int val_begin = region.begin;
             for (int i = region.begin; i < region.end; i++) {
               uint8_t tms_bit = (tms[i / 8] >> (i % 8)) & 0x1;
-              tms_val |= tms_bit << (i - region.begin);
+              tms_val |= tms_bit << (i - val_begin);
 
               if (i - val_begin == 6 || i == region.end - 1) {
                 int region_bits = i - val_begin + 1;
