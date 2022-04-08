@@ -186,7 +186,6 @@ int main(int argc, char *argv[]) {
   listen_addr.sin_addr.s_addr = INADDR_ANY;
   listen_addr.sin_port = htons(2542);
   listen_addr.sin_family = AF_INET;
-  listen_addr.sin_len = sizeof(sockaddr_in);
 
   int res = bind(fd, (sockaddr *)&listen_addr, sizeof(listen_addr));
   assert(res >= 0);
