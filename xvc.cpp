@@ -82,12 +82,13 @@ void jtag_xvc_init() {
   printf("Start xvc server at :2542\n");
 }
 
+const int BUFFER_SIZE = 4096;
 void jtag_xvc_tick() {
   if (client_fd >= 0) {
-    char buffer[4096];
-    char tms[4096];
-    char tdi[4096];
-    uint8_t tdo[4096] = {};
+    char buffer[BUFFER_SIZE];
+    char tms[BUFFER_SIZE];
+    char tdi[BUFFER_SIZE];
+    uint8_t tdo[BUFFER_SIZE] = {};
 
     if (!sread(client_fd, buffer, 2)) {
       // remote socket closed
@@ -174,7 +175,7 @@ void jtag_xvc_tick() {
         dprintf("[%d:%d]: %s\n", region.begin, region.end,
                 region.is_tms ? "TMS" : "DATA");
         if (region.is_tms) {
-          uint8_t tms_buffer[512] = {};
+          uint8_t tms_buffer[BUFFER_SIZE] = {};
           for (int i = region.begin; i < region.end; i++) {
             uint8_t tms_bit = (tms[i / 8] >> (i % 8)) & 0x1;
             int off = i - region.begin;
@@ -182,14 +183,14 @@ void jtag_xvc_tick() {
           }
           jtag_tms_seq(tms_buffer, region.end - region.begin);
         } else {
-          uint8_t tdi_buffer[512] = {};
+          uint8_t tdi_buffer[BUFFER_SIZE] = {};
           for (int i = region.begin; i < region.end; i++) {
             uint8_t tdi_bit = (tdi[i / 8] >> (i % 8)) & 0x1;
             int off = i - region.begin;
             tdi_buffer[off / 8] |= tdi_bit << (off % 8);
           }
 
-          uint8_t tdo_buffer[256] = {};
+          uint8_t tdo_buffer[BUFFER_SIZE] = {};
           jtag_scan_chain(tdi_buffer, tdo_buffer, region.end - region.begin,
                           region.flip_tms);
 
