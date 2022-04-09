@@ -1,3 +1,4 @@
+#include "common.h"
 #include <arpa/inet.h>
 #include <assert.h>
 #include <fcntl.h>
@@ -7,11 +8,11 @@
 #include <unistd.h>
 #include <vector>
 
-int listen_fd = -1;
-int client_fd = -1;
-struct ftdi_context *ftdi = NULL;
-
 int jtag_rbb_init() {
+  // D0, D1, D3 output, D2 input 0b1011
+  int ret = ftdi_set_bitmode(ftdi, 0x0b, BITMODE_SYNCBB);
+  assert(ret == 0);
+
   // ref rocket chip remote_bitbang.cc
   listen_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (listen_fd < 0) {
@@ -157,28 +158,4 @@ void jtag_rbb_tick() {
       fprintf(stderr, "JTAG debugger attached\n");
     }
   }
-}
-
-void jtag_init() {
-  ftdi = ftdi_new();
-  assert(ftdi);
-
-  int ret = ftdi_set_interface(ftdi, INTERFACE_B);
-  assert(ret == 0);
-  ret = ftdi_usb_open(ftdi, 0x0403, 0x6011);
-  assert(ret == 0);
-  ret = ftdi_set_baudrate(ftdi, 115200);
-  assert(ret == 0);
-  // D0, D1, D3 output, D2 input 0b1011
-  ret = ftdi_set_bitmode(ftdi, 0x0b, BITMODE_SYNCBB);
-  assert(ret == 0);
-}
-
-int main(int argc, char *argv[]) {
-  jtag_init();
-  jtag_rbb_init();
-  for (;;) {
-    jtag_rbb_tick();
-  }
-  return 0;
 }
