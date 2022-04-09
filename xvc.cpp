@@ -84,10 +84,10 @@ void jtag_xvc_init() {
 
 void jtag_xvc_tick() {
   if (client_fd >= 0) {
-    char buffer[256];
-    char tms[256];
-    char tdi[256];
-    uint8_t tdo[256] = {};
+    char buffer[4096];
+    char tms[4096];
+    char tdi[4096];
+    uint8_t tdo[4096] = {};
 
     if (!sread(client_fd, buffer, 2)) {
       // remote socket closed
@@ -102,7 +102,7 @@ void jtag_xvc_tick() {
       printf("getinfo:\n");
       assert(sread(client_fd, buffer, strlen("tinfo:")));
 
-      char info[] = "xvcServer_v1.0:128\n";
+      char info[] = "xvcServer_v1.0:2048\n";
       assert(swrite(client_fd, (char *)info, strlen(info)) >= 0);
     } else if (memcmp(buffer, "se", 2) == 0) {
       printf("settck:");
