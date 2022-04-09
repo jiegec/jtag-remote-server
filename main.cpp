@@ -22,15 +22,47 @@ void ftdi_init() {
   assert(ret == 0);
   ret = ftdi_set_baudrate(ftdi, 62500); // 1MBaud
   assert(ret == 0);
+  ret = ftdi_set_latency_timer(ftdi, 1); // reduce latency
+  assert(ret == 0);
 }
 
+enum Protocol { VPI, RBB };
+
 int main(int argc, char *argv[]) {
+  // https://man7.org/linux/man-pages/man3/getopt.3.html
+  int opt;
+  Protocol proto = Protocol::VPI;
+  while ((opt = getopt(argc, argv, "dvr")) != -1) {
+    switch (opt) {
+    case 'd':
+      debug = true;
+      break;
+    case 'v':
+      proto = Protocol::VPI;
+      break;
+    case 'r':
+      proto = Protocol::RBB;
+      break;
+    default: /* '?' */
+      fprintf(stderr, "Usage: %s [-d] [-v|-r] name\n", argv[0]);
+      return 1;
+    }
+  }
+
   ftdi_init();
-  // jtag_rbb_init();
-  jtag_vpi_init();
+  if (proto == Protocol::RBB) {
+    printf("Using remote bitbang protocol\n");
+    jtag_rbb_init();
+  } else if (proto == Protocol::VPI) {
+    printf("Using jtag_vpi protocol\n");
+    jtag_vpi_init();
+  }
   for (;;) {
-    // jtag_rbb_tick();
-    jtag_vpi_tick();
+    if (proto == Protocol::RBB) {
+      jtag_rbb_tick();
+    } else if (proto == Protocol::VPI) {
+      jtag_vpi_tick();
+    }
   }
   return 0;
 }

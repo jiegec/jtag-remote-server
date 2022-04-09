@@ -1,10 +1,6 @@
 #include "common.h"
 
 int jtag_rbb_init() {
-  // D0, D1, D3 output, D2 input 0b1011
-  int ret = ftdi_set_bitmode(ftdi, 0x0b, BITMODE_SYNCBB);
-  assert(ret == 0);
-
   // ref rocket chip remote_bitbang.cc
   listen_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (listen_fd < 0) {
@@ -63,7 +59,7 @@ void jtag_write(int tck, int tms, int tdi) {
   if (tck) {
     JtagState new_state = next_state(state, tms);
     if (new_state != state) {
-      printf("%s -> %s\n", state_to_string(state), state_to_string(new_state));
+      dprintf("%s -> %s\n", state_to_string(state), state_to_string(new_state));
     }
     state = new_state;
   }
@@ -153,6 +149,10 @@ void jtag_rbb_tick() {
         perror("setsockopt");
       }
       printf("JTAG debugger attached\n");
+
+      // D0, D1, D3 output, D2 input 0b1011
+      int ret = ftdi_set_bitmode(ftdi, 0x0b, BITMODE_SYNCBB);
+      assert(ret == 0);
     }
   }
 }
