@@ -12,8 +12,6 @@
 #include <unistd.h>
 #include <vector>
 
-JtagState state = TestLogicReset;
-
 // https://github.com/derekmulcahy/xvcpi/blob/e4df3cd5eaa6ca248b93b0c076ed21503d0abaf9/xvcpi.c#L147
 static int sread(int fd, char *target, int len) {
   char *t = target;

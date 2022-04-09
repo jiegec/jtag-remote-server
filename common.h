@@ -25,6 +25,8 @@ enum JtagState {
   UpdateIR,
 };
 
+extern JtagState state;
+
 JtagState next_state(JtagState cur, int bit);
 const char *state_to_string(JtagState state);
 

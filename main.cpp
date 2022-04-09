@@ -1,10 +1,13 @@
 #include "rbb.h"
+#include "common.h"
 #include <assert.h>
 #include <ftdi.h>
 
 struct ftdi_context *ftdi;
 int client_fd = -1;
 int listen_fd = -1;
+JtagState state = TestLogicReset;
+
 
 void ftdi_init() {
   ftdi = ftdi_new();

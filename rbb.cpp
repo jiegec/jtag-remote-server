@@ -65,11 +65,17 @@ void jtag_write_xfer() {
     read += ftdi_read_data(ftdi, &jtag_write_buffer[read],
                            jtag_write_buffer.size() - read);
   }
-
-  printf("Flushed write buffer\n");
 }
 
 void jtag_write(int tck, int tms, int tdi) {
+  if (tck) {
+    JtagState new_state = next_state(state, tms);
+    if (new_state != state) {
+      printf("%s -> %s\n", state_to_string(state), state_to_string(new_state));
+    }
+    state = new_state;
+  }
+
   if (ftdi) {
     unsigned char data = (tck << 0) | (tdi << 1) | (tms << 3);
     jtag_last_write_data = data;
@@ -89,7 +95,6 @@ int jtag_read() {
     jtag_write_xfer();
 
     int res = (jtag_write_buffer[jtag_write_buffer.size() - 1] >> 2) & 1;
-    printf("Read %d\n", res);
 
     jtag_write_buffer.clear();
     return res;
