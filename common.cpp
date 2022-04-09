@@ -103,14 +103,16 @@ bool jtag_tms_seq(const uint8_t *data, size_t num_bits) {
   printf("Sending TMS Seq ");
   print_bitvec(data, num_bits);
   printf("\n");
+
+  // compute state transition
+  JtagState new_state = state;
   for (size_t i = 0; i < num_bits; i++) {
     uint8_t bit = (data[i / 8] >> (i % 8)) & 1;
-    JtagState new_state = next_state(state, bit);
-    if (new_state != state) {
-      printf("%s -> %s\n", state_to_string(state), state_to_string(new_state));
-    }
-    state = new_state;
+    new_state = next_state(new_state, bit);
   }
+  printf("JTAG state: %s -> %s\n", state_to_string(state),
+         state_to_string(new_state));
+  state = new_state;
 
   for (size_t i = 0; i < (num_bits + 7) / 8; i++) {
     uint8_t cur_bits = std::min((size_t)8, num_bits - i * 8);
@@ -147,6 +149,10 @@ void print_bitvec(const uint8_t *data, size_t bits) {
 
 bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
                      bool flip_tms) {
+  printf("Write TDI: ");
+  print_bitvec(data, num_bits);
+  printf("\n");
+
   size_t bulk_bits = num_bits;
   if (flip_tms) {
     // last bit should be sent along TMS 0->1
@@ -190,9 +196,8 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
   if (flip_tms) {
     // send last bit along TMS=1
     JtagState new_state = next_state(state, 1);
-    if (new_state != state) {
-      printf("%s -> %s\n", state_to_string(state), state_to_string(new_state));
-    }
+    printf("JTAG state: %s -> %s\n", state_to_string(state), state_to_string(new_state));
+    state = new_state;
 
     uint8_t bit = (data[num_bits / 8] >> (num_bits % 8)) & 1;
     uint8_t buf[3] = {MPSSE_WRITE_TMS | MPSSE_LSB | MPSSE_BITMODE |
@@ -214,6 +219,23 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
   while (len > offset) {
     int read = ftdi_read_data(ftdi, &recv[offset], len - offset);
     offset += read;
+  }
+  printf("Read TDO: ");
+  print_bitvec(recv, num_bits);
+  printf("\n");
+
+  return true;
+}
+
+bool write_full(int fd, const uint8_t *data, size_t count) {
+  size_t num_sent = 0;
+  while (num_sent < count) {
+    ssize_t res = write(fd, &data[num_sent], count - num_sent);
+    if (res > 0) {
+      num_sent += res;
+    } else if (count < 0) {
+      return false;
+    }
   }
 
   return true;

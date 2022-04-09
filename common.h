@@ -8,6 +8,8 @@
 #include <ftdi.h>
 #include <netinet/tcp.h>
 #include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #include <vector>
 
@@ -45,5 +47,7 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
                      bool flip_tms);
 bool jtag_fsm_reset();
 void print_bitvec(const uint8_t *data, size_t bits);
+
+bool write_full(int fd, const uint8_t *data, size_t count);
 
 #endif

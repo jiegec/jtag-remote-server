@@ -1,5 +1,4 @@
 #include "common.h"
-#include <sys/socket.h>
 enum JtagVpiCommand {
   CMD_RESET,
   CMD_TMS_SEQ,
@@ -55,20 +54,6 @@ bool jtag_vpi_init() {
   return true;
 }
 
-bool write_socket_full(int fd, uint8_t *data, size_t count) {
-  size_t num_sent = 0;
-  while (num_sent < count) {
-    ssize_t res = write(fd, &data[num_sent], count - num_sent);
-    if (res > 0) {
-      num_sent += res;
-    } else if (count < 0) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 void jtag_vpi_tick() {
   // ref jtag_vpi project jtagServer.cpp
 
@@ -92,18 +77,17 @@ void jtag_vpi_tick() {
     if (jtag_vpi_recv == sizeof(struct jtag_vpi_cmd)) {
       // cmd valid
       jtag_vpi_recv = 0;
+      memset(cmd->buffer_in, 0, sizeof(cmd->buffer_in));
       if (cmd->cmd == CMD_RESET) {
         jtag_fsm_reset();
       } else if (cmd->cmd == CMD_TMS_SEQ) {
         jtag_tms_seq(cmd->buffer_out, cmd->nb_bits);
       } else if (cmd->cmd == CMD_SCAN_CHAIN) {
         jtag_scan_chain(cmd->buffer_out, cmd->buffer_in, cmd->nb_bits, false);
-        write_socket_full(client_fd, jtag_vpi_buffer,
-                          sizeof(struct jtag_vpi_cmd));
+        write_full(client_fd, jtag_vpi_buffer, sizeof(struct jtag_vpi_cmd));
       } else if (cmd->cmd == CMD_SCAN_CHAIN_FLIP_TMS) {
         jtag_scan_chain(cmd->buffer_out, cmd->buffer_in, cmd->nb_bits, true);
-        write_socket_full(client_fd, jtag_vpi_buffer,
-                          sizeof(struct jtag_vpi_cmd));
+        write_full(client_fd, jtag_vpi_buffer, sizeof(struct jtag_vpi_cmd));
       }
     }
   } else {
