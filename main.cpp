@@ -13,14 +13,15 @@ bool debug = false;
 // default: FD4232H
 int ftdi_vid = 0x0403;
 int ftdi_pid = 0x6011;
-enum ftdi_interface ftdi_intf = INTERFACE_B;
+enum ftdi_interface ftdi_channel = INTERFACE_A;
 
 bool ftdi_init() {
   printf("Initialize ftdi\n");
   ftdi = ftdi_new();
   assert(ftdi);
 
-  int ret = ftdi_set_interface(ftdi, ftdi_intf);
+  printf("Use channel %c\n", (int)ftdi_channel - 1 + 'A');
+  int ret = ftdi_set_interface(ftdi, ftdi_channel);
   if (ret) {
     printf("Error: %s\n", ftdi_get_error_string(ftdi));
     return false;
@@ -48,7 +49,7 @@ int main(int argc, char *argv[]) {
   // https://man7.org/linux/man-pages/man3/getopt.3.html
   int opt;
   Protocol proto = Protocol::VPI;
-  while ((opt = getopt(argc, argv, "dvr")) != -1) {
+  while ((opt = getopt(argc, argv, "dvrc:")) != -1) {
     switch (opt) {
     case 'd':
       debug = true;
@@ -59,11 +60,17 @@ int main(int argc, char *argv[]) {
     case 'r':
       proto = Protocol::RBB;
       break;
+    case 'c':
+      if ('A' <= optarg[0] && optarg[0] <= 'D') {
+        ftdi_channel = (ftdi_interface)(optarg[0] - 'A' + 1);
+      }
+      break;
     default: /* '?' */
       fprintf(stderr, "Usage: %s [-d] [-v|-r] name\n", argv[0]);
       fprintf(stderr, "\t-d: Enable debug messages\n");
       fprintf(stderr, "\t-v: Use jtag_vpi protocol\n");
       fprintf(stderr, "\t-r: Use remote bitbang protocol\n");
+      fprintf(stderr, "\t-c A|B|C|D: Select ftdi channel\n");
       return 1;
     }
   }

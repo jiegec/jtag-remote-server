@@ -10,6 +10,8 @@ An example scenario where this tool might be useful:
 └────────┘      └────────┘     └──────────┘     └──────────┘
 ```
 
+You can run this tool on `HOST 1` and debug the chip on `HOST 2` remotely.
+
 Supported protocols:
 
 - Remote bitbang
