@@ -143,7 +143,7 @@ void print_bitvec(const uint8_t *data, size_t bits) {
   }
   printf("(0x");
   int bytes = (bits + 7) / 8;
-  for (int i = 0; i < bytes; i++) {
+  for (int i = bytes - 1; i >= 0; i--) {
     printf("%02X", data[i]);
   }
   printf(")");
@@ -151,7 +151,7 @@ void print_bitvec(const uint8_t *data, size_t bits) {
 
 bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
                      bool flip_tms) {
-  printf("Write TDI: ");
+  printf("Write TDI%s %d bits: ", flip_tms ? "+TMS" : "", num_bits);
   print_bitvec(data, num_bits);
   printf("\n");
 
@@ -163,20 +163,22 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
 
   // send whole bytes first
   size_t length_in_bytes = bulk_bits / 8;
-  std::vector<uint8_t> buffer;
-  buffer.push_back(MPSSE_DO_READ | MPSSE_DO_WRITE | MPSSE_LSB |
-                   MPSSE_WRITE_NEG);
-  // length in bytes -1 lo
-  buffer.push_back((length_in_bytes - 1) & 0xff);
-  // length in bytes -1 hi
-  buffer.push_back((length_in_bytes - 1) >> 8);
-  // data
-  buffer.insert(buffer.end(), &data[0], &data[length_in_bytes]);
-  assert(buffer.size() == 3 + length_in_bytes);
+  if (length_in_bytes) {
+    std::vector<uint8_t> buffer;
+    buffer.push_back(MPSSE_DO_READ | MPSSE_DO_WRITE | MPSSE_LSB |
+                     MPSSE_WRITE_NEG);
+    // length in bytes -1 lo
+    buffer.push_back((length_in_bytes - 1) & 0xff);
+    // length in bytes -1 hi
+    buffer.push_back((length_in_bytes - 1) >> 8);
+    // data
+    buffer.insert(buffer.end(), &data[0], &data[length_in_bytes]);
+    assert(buffer.size() == 3 + length_in_bytes);
 
-  if (ftdi_write_data(ftdi, buffer.data(), buffer.size()) != buffer.size()) {
-    printf("error: %s\n", ftdi_get_error_string(ftdi));
-    return false;
+    if (ftdi_write_data(ftdi, buffer.data(), buffer.size()) != buffer.size()) {
+      printf("error: %s\n", ftdi_get_error_string(ftdi));
+      return false;
+    }
   }
 
   // sent rest bits
@@ -198,12 +200,13 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
   if (flip_tms) {
     // send last bit along TMS=1
     JtagState new_state = next_state(state, 1);
-    printf("JTAG state: %s -> %s\n", state_to_string(state), state_to_string(new_state));
+    printf("JTAG state: %s -> %s\n", state_to_string(state),
+           state_to_string(new_state));
     state = new_state;
 
-    uint8_t bit = (data[num_bits / 8] >> (num_bits % 8)) & 1;
-    uint8_t buf[3] = {MPSSE_WRITE_TMS | MPSSE_LSB | MPSSE_BITMODE |
-                          MPSSE_WRITE_NEG,
+    uint8_t bit = (data[num_bits / 8] >> ((num_bits - 1) % 8)) & 1;
+    uint8_t buf[3] = {MPSSE_DO_READ | MPSSE_WRITE_TMS | MPSSE_LSB |
+                          MPSSE_BITMODE | MPSSE_WRITE_NEG,
                       // length in bits -1
                       0x00,
                       // data
@@ -216,12 +219,27 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
     }
   }
 
-  size_t len = (num_bits + 7) / 8;
+  // read bulk
+  size_t len = (bulk_bits + 7) / 8;
   size_t offset = 0;
   while (len > offset) {
     int read = ftdi_read_data(ftdi, &recv[offset], len - offset);
+    if (read < 0) {
+      printf("error: %s\n", ftdi_get_error_string(ftdi));
+      return false;
+    }
     offset += read;
   }
+
+  // handle last bit when TMS=1
+  if (flip_tms) {
+    uint8_t last_bit;
+    while (ftdi_read_data(ftdi, &last_bit, 1) != 1)
+      ;
+
+    recv[num_bits / 8] |= last_bit << ((num_bits - 1) % 8);
+  }
+
   printf("Read TDO: ");
   print_bitvec(recv, num_bits);
   printf("\n");

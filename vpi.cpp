@@ -72,6 +72,9 @@ void jtag_vpi_tick() {
       printf("JTAG debugger detached\n");
       close(client_fd);
       client_fd = -1;
+
+      // reset mpsse
+      ftdi_set_bitmode(ftdi, 0, 0);
     }
 
     if (jtag_vpi_recv == sizeof(struct jtag_vpi_cmd)) {
