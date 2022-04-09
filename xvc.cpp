@@ -13,16 +13,19 @@
 #include <vector>
 
 // https://github.com/derekmulcahy/xvcpi/blob/e4df3cd5eaa6ca248b93b0c076ed21503d0abaf9/xvcpi.c#L147
-static int sread(int fd, char *target, int len) {
+static bool sread(int fd, char *target, int len) {
   char *t = target;
   while (len) {
     int r = read(fd, t, len);
-    if (r <= 0)
-      return r;
-    t += r;
-    len -= r;
+    if (r > 0) {
+      t += r;
+      len -= r;
+    } else if (r == 0) {
+      // socket disconnected
+      return false;
+    }
   }
-  return 0;
+  return true;
 }
 
 static int swrite(int fd, char *target, int len) {
@@ -39,6 +42,7 @@ static int swrite(int fd, char *target, int len) {
 
 struct Region {
   bool is_tms;
+  bool flip_tms;
   int begin;
   int end;
 };
@@ -58,6 +62,13 @@ void jtag_xvc_init() {
   listen_fd = socket(AF_INET, SOCK_STREAM, 0);
   assert(listen_fd >= 0);
 
+  int reuseaddr = 1;
+  if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(int)) <
+      0) {
+    perror("setsockopt");
+    return;
+  }
+
   sockaddr_in listen_addr = {};
   listen_addr.sin_addr.s_addr = INADDR_ANY;
   listen_addr.sin_port = htons(2542);
@@ -73,39 +84,45 @@ void jtag_xvc_init() {
 
 void jtag_xvc_tick() {
   if (client_fd >= 0) {
-
     char buffer[256];
     char tms[256];
     char tdi[256];
-    char tdo[256] = {};
+    uint8_t tdo[256] = {};
 
-    assert(sread(client_fd, buffer, 2) >= 0);
+    if (!sread(client_fd, buffer, 2)) {
+      // remote socket closed
+      printf("JTAG debugger detached\n");
+      close(client_fd);
+      client_fd = -1;
+      return;
+    }
+
     if (memcmp(buffer, "ge", 2) == 0) {
       // getinfo
       printf("getinfo:\n");
-      assert(sread(client_fd, buffer, strlen("tinfo:")) >= 0);
+      assert(sread(client_fd, buffer, strlen("tinfo:")));
 
       char info[] = "xvcServer_v1.0:128\n";
       assert(swrite(client_fd, (char *)info, strlen(info)) >= 0);
     } else if (memcmp(buffer, "se", 2) == 0) {
       printf("settck:");
-      assert(sread(client_fd, buffer, strlen("ttck:")) >= 0);
+      assert(sread(client_fd, buffer, strlen("ttck:")));
 
       uint32_t tck = 0;
-      assert(sread(client_fd, (char *)&tck, sizeof(tck)) >= 0);
+      assert(sread(client_fd, (char *)&tck, sizeof(tck)));
       printf("%d\n", tck);
 
       assert(swrite(client_fd, (char *)&tck, sizeof(tck)) >= 0);
     } else if (memcmp(buffer, "sh", 2) == 0) {
       printf("shift:\n");
-      assert(sread(client_fd, buffer, strlen("ift:")) >= 0);
+      assert(sread(client_fd, buffer, strlen("ift:")));
 
       uint32_t bits = 0;
-      assert(sread(client_fd, (char *)&bits, sizeof(bits)) >= 0);
+      assert(sread(client_fd, (char *)&bits, sizeof(bits)));
 
       uint32_t bytes = (bits + 7) / 8;
-      assert(sread(client_fd, tms, bytes) >= 0);
-      assert(sread(client_fd, tdi, bytes) >= 0);
+      assert(sread(client_fd, tms, bytes));
+      assert(sread(client_fd, tdi, bytes));
       printf(" tms:");
       print_bitvec((unsigned char *)tms, bits);
       printf("\n");
@@ -133,11 +150,12 @@ void jtag_xvc_tick() {
           // end
           Region region;
           region.is_tms = false;
+          region.flip_tms = true;
           region.begin = shift_pos;
-          region.end = i;
+          region.end = i + 1;
           regions.push_back(region);
 
-          shift_pos = i;
+          shift_pos = i + 1;
         }
         if (state != new_state) {
           printf("state %s -> %s\n", state_to_string(state),
@@ -148,6 +166,7 @@ void jtag_xvc_tick() {
 
       Region region;
       region.is_tms = state != ShiftDR && state != ShiftIR;
+      region.flip_tms = false;
       region.begin = shift_pos;
       region.end = bits;
       regions.push_back(region);
@@ -155,95 +174,37 @@ void jtag_xvc_tick() {
         printf("[%d:%d]: %s\n", region.begin, region.end,
                region.is_tms ? "TMS" : "DATA");
         if (region.is_tms) {
-          uint8_t tms_val = 0;
-          int val_begin = region.begin;
+          uint8_t tms_buffer[512] = {};
           for (int i = region.begin; i < region.end; i++) {
             uint8_t tms_bit = (tms[i / 8] >> (i % 8)) & 0x1;
-            tms_val |= tms_bit << (i - val_begin);
-
-            if (i - val_begin == 6 || i == region.end - 1) {
-              int region_bits = i - val_begin + 1;
-              uint8_t data[256] = {MPSSE_WRITE_TMS | MPSSE_LSB |
-                                       MPSSE_WRITE_NEG | MPSSE_BITMODE,
-                                   // length in bits -1
-                                   (uint8_t)(region_bits - 1),
-                                   // data
-                                   tms_val};
-              printf("send tms to jtag: ");
-              print_bitvec((unsigned char *)&tms_val, region_bits);
-              printf("\n");
-              if (ftdi_write_data(ftdi, data, 3) != 3) {
-                printf("Error: %s\n", ftdi_get_error_string(ftdi));
-                return;
-              }
-
-              tms_val = 0;
-              val_begin = i + 1;
-            }
+            int off = i - region.begin;
+            tms_buffer[off / 8] |= tms_bit << (off % 8);
           }
-
+          jtag_tms_seq(tms_buffer, region.end - region.begin);
         } else {
           uint8_t tdi_buffer[512] = {};
-          int tdi_bits = region.end - region.begin;
-          int tdi_whole_bytes = tdi_bits / 8;
           for (int i = region.begin; i < region.end; i++) {
             uint8_t tdi_bit = (tdi[i / 8] >> (i % 8)) & 0x1;
             int off = i - region.begin;
             tdi_buffer[off / 8] |= tdi_bit << (off % 8);
           }
 
-          if (tdi_whole_bytes > 0) {
-            uint8_t data[256] = {
-                MPSSE_DO_READ | MPSSE_DO_WRITE | MPSSE_LSB | MPSSE_WRITE_NEG,
-                // length in bytes -1 lo
-                (uint8_t)(tdi_whole_bytes - 1),
-                // length in bytes -1 hi
-                (uint8_t)((tdi_whole_bytes - 1) >> 8),
-                // data
-            };
-            memcpy(&data[3], tdi_buffer, tdi_whole_bytes);
-            printf("send tdi to jtag: ");
-            print_bitvec((unsigned char *)tdi_buffer, tdi_whole_bytes * 8);
-            printf("\n");
-            if (ftdi_write_data(ftdi, data, 3 + tdi_whole_bytes) !=
-                3 + tdi_whole_bytes) {
-              printf("Error: %s\n", ftdi_get_error_string(ftdi));
-              return;
-            }
-          }
+          uint8_t tdo_buffer[256] = {};
+          jtag_scan_chain(tdi_buffer, tdo_buffer, region.end - region.begin,
+                          region.flip_tms);
 
-          if (tdi_bits % 8) {
-            uint8_t data[256] = {MPSSE_DO_READ | MPSSE_DO_WRITE | MPSSE_LSB |
-                                     MPSSE_WRITE_NEG | MPSSE_BITMODE,
-                                 // length in bits -1
-                                 (uint8_t)((tdi_whole_bytes % 8) - 1),
-                                 // data
-                                 tdi_buffer[tdi_whole_bytes]};
-            printf("send tdi to jtag: ");
-            print_bitvec((unsigned char *)&tdi_buffer[tdi_whole_bytes],
-                         tdi_bits % 8);
-            printf("\n");
-            if (ftdi_write_data(ftdi, data, 3) != 3) {
-              printf("Error: %s\n", ftdi_get_error_string(ftdi));
-              return;
-            }
+          for (int i = region.begin; i < region.end; i++) {
+            int off = i - region.begin;
+            uint8_t tdo_bit = (tdo_buffer[off / 8] >> (off % 8)) & 0x1;
+            tdo[i / 8] |= tdo_bit << (i % 8);
           }
         }
-      }
-
-      int offset = 0;
-      while (offset < bytes) {
-        int read = ftdi_read_data(ftdi, (unsigned char *)tdo, bytes - offset);
-        if (read == 0) {
-          break;
-        }
-        offset += read;
       }
 
       printf(" tdo:");
-      print_bitvec((unsigned char *)tdo, bits);
+      print_bitvec(tdo, bits);
       printf("\n");
-      assert(swrite(client_fd, tdo, bytes) >= 0);
+      assert(swrite(client_fd, (char *)tdo, bytes) >= 0);
     } else {
       printf("Unsupported command\n");
       close(client_fd);

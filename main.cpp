@@ -1,6 +1,7 @@
 #include "common.h"
 #include "rbb.h"
 #include "vpi.h"
+#include "xvc.h"
 #include <assert.h>
 #include <ftdi.h>
 
@@ -43,13 +44,13 @@ bool ftdi_init() {
   return true;
 }
 
-enum Protocol { VPI, RBB };
+enum Protocol { VPI, RBB, XVC };
 
 int main(int argc, char *argv[]) {
   // https://man7.org/linux/man-pages/man3/getopt.3.html
   int opt;
   Protocol proto = Protocol::VPI;
-  while ((opt = getopt(argc, argv, "dvrc:")) != -1) {
+  while ((opt = getopt(argc, argv, "dvrxc:")) != -1) {
     switch (opt) {
     case 'd':
       debug = true;
@@ -59,6 +60,9 @@ int main(int argc, char *argv[]) {
       break;
     case 'r':
       proto = Protocol::RBB;
+      break;
+    case 'x':
+      proto = Protocol::XVC;
       break;
     case 'c':
       if ('A' <= optarg[0] && optarg[0] <= 'D') {
@@ -70,6 +74,7 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "\t-d: Enable debug messages\n");
       fprintf(stderr, "\t-v: Use jtag_vpi protocol\n");
       fprintf(stderr, "\t-r: Use remote bitbang protocol\n");
+      fprintf(stderr, "\t-x: Use xilinx virtual cable protocol\n");
       fprintf(stderr, "\t-c A|B|C|D: Select ftdi channel\n");
       return 1;
     }
@@ -85,12 +90,17 @@ int main(int argc, char *argv[]) {
   } else if (proto == Protocol::VPI) {
     printf("Use jtag_vpi protocol\n");
     jtag_vpi_init();
+  } else if (proto == Protocol::XVC) {
+    printf("Use xilinx virtual cable protocol\n");
+    jtag_xvc_init();
   }
   for (;;) {
     if (proto == Protocol::RBB) {
       jtag_rbb_tick();
     } else if (proto == Protocol::VPI) {
       jtag_vpi_tick();
+    } else if (proto == Protocol::XVC) {
+      jtag_xvc_tick();
     }
   }
   return 0;
