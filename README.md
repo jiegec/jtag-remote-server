@@ -5,9 +5,9 @@ This tool can help you debug chips remotely. It requires libftdi to communicate 
 An example scenario where this tool might be useful:
 
 ```
-┌────────┐ JTAG  ┌────────┐ USB ┌────────┐ TCP  ┌────────┐
-│  FPGA  ├───────┤  FTDI  ├─────┤ HOST 1 ├──────┤ HOST 2 │
-└────────┘ Cable └────────┘     └────────┘      └────────┘
+┌────────┐ JTAG ┌────────┐ USB ┌──────────┐ TCP ┌──────────┐
+│  FPGA  ├──────┤  FTDI  ├─────┤  HOST 1  ├─────┤  HOST 2  │
+└────────┘      └────────┘     └──────────┘     └──────────┘
 ```
 
 Supported protocols:
