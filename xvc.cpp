@@ -99,22 +99,22 @@ void jtag_xvc_tick() {
 
     if (memcmp(buffer, "ge", 2) == 0) {
       // getinfo
-      printf("getinfo:\n");
+      dprintf("getinfo:\n");
       assert(sread(client_fd, buffer, strlen("tinfo:")));
 
       char info[] = "xvcServer_v1.0:2048\n";
       assert(swrite(client_fd, (char *)info, strlen(info)) >= 0);
     } else if (memcmp(buffer, "se", 2) == 0) {
-      printf("settck:");
+      dprintf("settck:");
       assert(sread(client_fd, buffer, strlen("ttck:")));
 
       uint32_t tck = 0;
       assert(sread(client_fd, (char *)&tck, sizeof(tck)));
-      printf("%d\n", tck);
+      dprintf("%d\n", tck);
 
       assert(swrite(client_fd, (char *)&tck, sizeof(tck)) >= 0);
     } else if (memcmp(buffer, "sh", 2) == 0) {
-      printf("shift:\n");
+      dprintf("shift:\n");
       assert(sread(client_fd, buffer, strlen("ift:")));
 
       uint32_t bits = 0;
@@ -123,12 +123,12 @@ void jtag_xvc_tick() {
       uint32_t bytes = (bits + 7) / 8;
       assert(sread(client_fd, tms, bytes));
       assert(sread(client_fd, tdi, bytes));
-      printf(" tms:");
+      dprintf(" tms:");
       print_bitvec((unsigned char *)tms, bits);
-      printf("\n");
-      printf(" tdi:");
+      dprintf("\n");
+      dprintf(" tdi:");
       print_bitvec((unsigned char *)tdi, bits);
-      printf("\n");
+      dprintf("\n");
 
       // send tms & read
       int shift_pos = 0;
@@ -158,8 +158,8 @@ void jtag_xvc_tick() {
           shift_pos = i + 1;
         }
         if (state != new_state) {
-          printf("state %s -> %s\n", state_to_string(state),
-                 state_to_string(new_state));
+          dprintf("state %s -> %s\n", state_to_string(state),
+                  state_to_string(new_state));
         }
         state = new_state;
       }
@@ -171,8 +171,8 @@ void jtag_xvc_tick() {
       region.end = bits;
       regions.push_back(region);
       for (auto region : regions) {
-        printf("[%d:%d]: %s\n", region.begin, region.end,
-               region.is_tms ? "TMS" : "DATA");
+        dprintf("[%d:%d]: %s\n", region.begin, region.end,
+                region.is_tms ? "TMS" : "DATA");
         if (region.is_tms) {
           uint8_t tms_buffer[512] = {};
           for (int i = region.begin; i < region.end; i++) {
@@ -201,9 +201,9 @@ void jtag_xvc_tick() {
         }
       }
 
-      printf(" tdo:");
+      dprintf(" tdo:");
       print_bitvec(tdo, bits);
-      printf("\n");
+      dprintf("\n");
       assert(swrite(client_fd, (char *)tdo, bytes) >= 0);
     } else {
       printf("Unsupported command\n");

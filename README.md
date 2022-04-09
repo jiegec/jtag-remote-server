@@ -14,8 +14,8 @@ You can run this tool on `HOST 1` and debug the chip on `HOST 2` remotely.
 
 Supported protocols:
 
-- Remote bitbang
-- JTAG vpi
-- Xilinx virtual cable (TODO)
+- Xilinx virtual cable: for Vivado
+- Remote bitbang: for OpenOCD
+- JTAG vpi: for OpenOCD
 
 Some example OpenOCD configs are provided under `examples` directory.
