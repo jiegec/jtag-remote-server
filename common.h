@@ -40,8 +40,10 @@ JtagState next_state(JtagState cur, int bit);
 const char *state_to_string(JtagState state);
 
 bool mpsse_init();
-bool jtag_tms_seq(uint8_t *data, size_t num_bits);
+bool jtag_tms_seq(const uint8_t *data, size_t num_bits);
+bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
+                     bool flip_tms);
 bool jtag_fsm_reset();
-void print_bitvec(uint8_t *data, size_t bits);
+void print_bitvec(const uint8_t *data, size_t bits);
 
 #endif
