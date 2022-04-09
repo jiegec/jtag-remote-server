@@ -1,5 +1,6 @@
 #include "common.h"
 #include <assert.h>
+#include <stdarg.h>
 
 JtagState next_state(JtagState cur, int bit) {
   switch (cur) {
@@ -102,9 +103,9 @@ bool jtag_fsm_reset() {
 }
 
 bool jtag_tms_seq(const uint8_t *data, size_t num_bits) {
-  printf("Sending TMS Seq ");
+  dprintf("Sending TMS Seq ");
   print_bitvec(data, num_bits);
-  printf("\n");
+  dprintf("\n");
 
   // compute state transition
   JtagState new_state = state;
@@ -112,8 +113,8 @@ bool jtag_tms_seq(const uint8_t *data, size_t num_bits) {
     uint8_t bit = (data[i / 8] >> (i % 8)) & 1;
     new_state = next_state(new_state, bit);
   }
-  printf("JTAG state: %s -> %s\n", state_to_string(state),
-         state_to_string(new_state));
+  dprintf("JTAG state: %s -> %s\n", state_to_string(state),
+          state_to_string(new_state));
   state = new_state;
 
   for (size_t i = 0; i < (num_bits + 7) / 8; i++) {
@@ -139,21 +140,21 @@ void print_bitvec(const uint8_t *data, size_t bits) {
   for (size_t i = 0; i < bits; i++) {
     int off = i % 8;
     int bit = ((data[i / 8]) >> off) & 1;
-    printf("%c", bit ? '1' : '0');
+    dprintf("%c", bit ? '1' : '0');
   }
-  printf("(0x");
+  dprintf("(0x");
   int bytes = (bits + 7) / 8;
   for (int i = bytes - 1; i >= 0; i--) {
-    printf("%02X", data[i]);
+    dprintf("%02X", data[i]);
   }
-  printf(")");
+  dprintf(")");
 }
 
 bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
                      bool flip_tms) {
-  printf("Write TDI%s %d bits: ", flip_tms ? "+TMS" : "", num_bits);
+  dprintf("Write TDI%s %d bits: ", flip_tms ? "+TMS" : "", num_bits);
   print_bitvec(data, num_bits);
-  printf("\n");
+  dprintf("\n");
 
   size_t bulk_bits = num_bits;
   if (flip_tms) {
@@ -200,8 +201,8 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
   if (flip_tms) {
     // send last bit along TMS=1
     JtagState new_state = next_state(state, 1);
-    printf("JTAG state: %s -> %s\n", state_to_string(state),
-           state_to_string(new_state));
+    dprintf("JTAG state: %s -> %s\n", state_to_string(state),
+            state_to_string(new_state));
     state = new_state;
 
     uint8_t bit = (data[num_bits / 8] >> ((num_bits - 1) % 8)) & 1;
@@ -240,9 +241,9 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
     recv[num_bits / 8] |= last_bit << ((num_bits - 1) % 8);
   }
 
-  printf("Read TDO: ");
+  dprintf("Read TDO: ");
   print_bitvec(recv, num_bits);
-  printf("\n");
+  dprintf("\n");
 
   return true;
 }
@@ -259,4 +260,13 @@ bool write_full(int fd, const uint8_t *data, size_t count) {
   }
 
   return true;
+}
+
+void dprintf(const char *fmt, ...) {
+  va_list va_args;
+  va_start(va_args, fmt);
+  if (debug) {
+    vprintf(fmt, va_args);
+  }
+  va_end(va_args);
 }

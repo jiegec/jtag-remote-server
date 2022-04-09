@@ -8,6 +8,7 @@ struct ftdi_context *ftdi;
 int client_fd = -1;
 int listen_fd = -1;
 JtagState state = TestLogicReset;
+bool debug = false;
 
 void ftdi_init() {
   ftdi = ftdi_new();

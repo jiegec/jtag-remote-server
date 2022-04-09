@@ -16,6 +16,7 @@
 extern struct ftdi_context *ftdi;
 extern int listen_fd;
 extern int client_fd;
+extern bool debug;
 
 enum JtagState {
   TestLogicReset,
@@ -49,5 +50,7 @@ bool jtag_fsm_reset();
 void print_bitvec(const uint8_t *data, size_t bits);
 
 bool write_full(int fd, const uint8_t *data, size_t count);
+
+void dprintf(const char *fmt, ...);
 
 #endif
