@@ -1,4 +1,5 @@
 #include "rbb.h"
+#include "vpi.h"
 #include "common.h"
 #include <assert.h>
 #include <ftdi.h>
@@ -23,9 +24,11 @@ void ftdi_init() {
 
 int main(int argc, char *argv[]) {
   ftdi_init();
-  jtag_rbb_init();
+  //jtag_rbb_init();
+  jtag_vpi_init();
   for (;;) {
-    jtag_rbb_tick();
+    //jtag_rbb_tick();
+    jtag_vpi_tick();
   }
   return 0;
 }

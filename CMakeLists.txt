@@ -6,6 +6,6 @@ pkg_check_modules(FTDI REQUIRED libftdi1)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS "-fsanitize=address ${CMAKE_CXX_FLAGS}")
 
-add_executable(jtag-remote-server main.cpp xvc.cpp rbb.cpp common.cpp)
+add_executable(jtag-remote-server main.cpp xvc.cpp rbb.cpp common.cpp vpi.cpp)
 target_link_libraries(jtag-remote-server ${FTDI_LDFLAGS})
 target_include_directories(jtag-remote-server PUBLIC ${FTDI_INCLUDE_DIRS})

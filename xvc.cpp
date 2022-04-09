@@ -37,20 +37,6 @@ static int swrite(int fd, char *target, int len) {
   return 0;
 }
 
-void print_bitvec(unsigned char *data, int bits) {
-  for (int i = 0; i < bits; i++) {
-    int off = i % 8;
-    int bit = ((data[i / 8]) >> off) & 1;
-    printf("%c", bit ? '1' : '0');
-  }
-  printf("(0x");
-  int bytes = (bits + 7) / 8;
-  for (int i = 0; i < bytes; i++) {
-    printf("%02X", data[i]);
-  }
-  printf(")");
-}
-
 struct Region {
   bool is_tms;
   int begin;
@@ -277,7 +263,7 @@ void jtag_xvc_tick() {
                      sizeof(flags)) < 0) {
         perror("setsockopt");
       }
-      fprintf(stderr, "JTAG debugger attached\n");
+      printf("JTAG debugger attached\n");
     }
   }
 }

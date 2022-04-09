@@ -1,12 +1,4 @@
 #include "common.h"
-#include <arpa/inet.h>
-#include <assert.h>
-#include <fcntl.h>
-#include <ftdi.h>
-#include <netinet/tcp.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <vector>
 
 int jtag_rbb_init() {
   // D0, D1, D3 output, D2 input 0b1011
@@ -45,7 +37,7 @@ int jtag_rbb_init() {
     perror("listen");
     return -1;
   }
-  fprintf(stderr, "Remote bitbang server listening at :12345\n");
+  printf("Remote bitbang server listening at :12345\n");
 
   return 0;
 }
@@ -116,7 +108,7 @@ void jtag_rbb_tick() {
         read_buffer_offset = 0;
       } else if (num_read == 0) {
         // remote socket closed
-        fprintf(stderr, "JTAG debugger detached\n");
+        printf("JTAG debugger detached\n");
         close(client_fd);
         client_fd = -1;
       }
@@ -160,7 +152,7 @@ void jtag_rbb_tick() {
                      sizeof(flags)) < 0) {
         perror("setsockopt");
       }
-      fprintf(stderr, "JTAG debugger attached\n");
+      printf("JTAG debugger attached\n");
     }
   }
 }

@@ -79,3 +79,60 @@ const char *state_to_string(JtagState state) {
     assert(false);
   }
 }
+
+bool mpsse_init() {
+  ftdi_set_bitmode(ftdi, 0, BITMODE_MPSSE);
+
+  uint8_t setup[256] = {SET_BITS_LOW,  0x88, 0x8b, TCK_DIVISOR,   0x01, 0x00,
+                        SET_BITS_HIGH, 0,    0,    SEND_IMMEDIATE};
+  if (ftdi_write_data(ftdi, setup, 10) != 10) {
+    printf("error: %s\n", ftdi_get_error_string(ftdi));
+    return false;
+  }
+
+  return true;
+}
+
+bool jtag_fsm_reset() {
+  // 11111: Goto Test-Logic-Reset
+  uint8_t tms[] = {0x1F};
+  return jtag_tms_seq(tms, 5);
+}
+
+bool jtag_tms_seq(uint8_t *data, size_t num_bits) {
+  printf("Sending TMS Seq ");
+  print_bitvec(data, num_bits);
+  printf("\n");
+
+  for (size_t i = 0; i < (num_bits + 7) / 8; i++) {
+    size_t cur_bits = std::min((size_t)8, num_bits - i * 8);
+
+    // Clock Data to TMS pin (no read)
+    uint8_t idle[256] = {MPSSE_WRITE_TMS | MPSSE_LSB | MPSSE_BITMODE |
+                             MPSSE_WRITE_NEG,
+                         // length in bits -1
+                         cur_bits - 1,
+                         // data
+                         data[i]};
+    if (ftdi_write_data(ftdi, idle, 3) != 3) {
+      printf("error: %s\n", ftdi_get_error_string(ftdi));
+      return false;
+    }
+  }
+
+  return true;
+}
+
+void print_bitvec(uint8_t *data, size_t bits) {
+  for (size_t i = 0; i < bits; i++) {
+    int off = i % 8;
+    int bit = ((data[i / 8]) >> off) & 1;
+    printf("%c", bit ? '1' : '0');
+  }
+  printf("(0x");
+  int bytes = (bits + 7) / 8;
+  for (int i = 0; i < bytes; i++) {
+    printf("%02X", data[i]);
+  }
+  printf(")");
+}
