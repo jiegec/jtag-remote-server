@@ -81,6 +81,8 @@ const char *state_to_string(JtagState state) {
 }
 
 bool mpsse_init() {
+  // reset mpsse and enable
+  ftdi_set_bitmode(ftdi, 0, 0);
   ftdi_set_bitmode(ftdi, 0, BITMODE_MPSSE);
 
   uint8_t setup[256] = {SET_BITS_LOW,  0x88, 0x8b, TCK_DIVISOR,   0x01, 0x00,
