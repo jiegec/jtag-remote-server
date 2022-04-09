@@ -89,7 +89,7 @@ bool mpsse_init() {
   uint8_t setup[256] = {SET_BITS_LOW,  0x88, 0x8b, TCK_DIVISOR,   0x01, 0x00,
                         SET_BITS_HIGH, 0,    0,    SEND_IMMEDIATE};
   if (ftdi_write_data(ftdi, setup, 10) != 10) {
-    printf("error: %s\n", ftdi_get_error_string(ftdi));
+    printf("Error: %s\n", ftdi_get_error_string(ftdi));
     return false;
   }
 
@@ -128,7 +128,7 @@ bool jtag_tms_seq(const uint8_t *data, size_t num_bits) {
                          // data
                          data[i]};
     if (ftdi_write_data(ftdi, idle, 3) != 3) {
-      printf("error: %s\n", ftdi_get_error_string(ftdi));
+      printf("Error: %s\n", ftdi_get_error_string(ftdi));
       return false;
     }
   }
@@ -177,7 +177,7 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
     assert(buffer.size() == 3 + length_in_bytes);
 
     if (ftdi_write_data(ftdi, buffer.data(), buffer.size()) != buffer.size()) {
-      printf("error: %s\n", ftdi_get_error_string(ftdi));
+      printf("Error: %s\n", ftdi_get_error_string(ftdi));
       return false;
     }
   }
@@ -193,7 +193,7 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
         data[length_in_bytes],
     };
     if (ftdi_write_data(ftdi, buf, 3) != 3) {
-      printf("error: %s\n", ftdi_get_error_string(ftdi));
+      printf("Error: %s\n", ftdi_get_error_string(ftdi));
       return false;
     }
   }
@@ -215,7 +215,7 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
                       // TMS=1
                       (uint8_t)(0x01 | (bit << 7))};
     if (ftdi_write_data(ftdi, buf, 3) != 3) {
-      printf("error: %s\n", ftdi_get_error_string(ftdi));
+      printf("Error: %s\n", ftdi_get_error_string(ftdi));
       return false;
     }
   }
@@ -226,7 +226,7 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
   while (len > offset) {
     int read = ftdi_read_data(ftdi, &recv[offset], len - offset);
     if (read < 0) {
-      printf("error: %s\n", ftdi_get_error_string(ftdi));
+      printf("Error: %s\n", ftdi_get_error_string(ftdi));
       return false;
     }
     offset += read;

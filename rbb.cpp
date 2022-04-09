@@ -33,7 +33,7 @@ int jtag_rbb_init() {
     perror("listen");
     return -1;
   }
-  printf("Remote bitbang server listening at :12345\n");
+  printf("Start remote bitbang server at :12345\n");
 
   return 0;
 }

@@ -10,20 +10,36 @@ int listen_fd = -1;
 JtagState state = TestLogicReset;
 bool debug = false;
 
-void ftdi_init() {
+// default: FD4232H
+int ftdi_vid = 0x0403;
+int ftdi_pid = 0x6011;
+enum ftdi_interface ftdi_intf = INTERFACE_B;
+
+bool ftdi_init() {
+  printf("Initialize ftdi\n");
   ftdi = ftdi_new();
   assert(ftdi);
 
-  int ret = ftdi_set_interface(ftdi, INTERFACE_B);
-  assert(ret == 0);
-  ret = ftdi_usb_open(ftdi, 0x0403, 0x6011);
-  assert(ret == 0);
+  int ret = ftdi_set_interface(ftdi, ftdi_intf);
+  if (ret) {
+    printf("Error: %s\n", ftdi_get_error_string(ftdi));
+    return false;
+  }
+
+  printf("Open device vid=0x%04x pid=0x%04x\n", ftdi_vid, ftdi_pid);
+  ret = ftdi_usb_open(ftdi, ftdi_vid, ftdi_pid);
+  if (ret) {
+    printf("Error: %s\n", ftdi_get_error_string(ftdi));
+    return false;
+  }
+
   ret = ftdi_usb_reset(ftdi);
   assert(ret == 0);
   ret = ftdi_set_baudrate(ftdi, 62500); // 1MBaud
   assert(ret == 0);
   ret = ftdi_set_latency_timer(ftdi, 1); // reduce latency
   assert(ret == 0);
+  return true;
 }
 
 enum Protocol { VPI, RBB };
@@ -45,16 +61,22 @@ int main(int argc, char *argv[]) {
       break;
     default: /* '?' */
       fprintf(stderr, "Usage: %s [-d] [-v|-r] name\n", argv[0]);
+      fprintf(stderr, "\t-d: Enable debug messages\n");
+      fprintf(stderr, "\t-v: Use jtag_vpi protocol\n");
+      fprintf(stderr, "\t-r: Use remote bitbang protocol\n");
       return 1;
     }
   }
 
-  ftdi_init();
+  if (!ftdi_init()) {
+    return false;
+  }
+
   if (proto == Protocol::RBB) {
-    printf("Using remote bitbang protocol\n");
+    printf("Use remote bitbang protocol\n");
     jtag_rbb_init();
   } else if (proto == Protocol::VPI) {
-    printf("Using jtag_vpi protocol\n");
+    printf("Use jtag_vpi protocol\n");
     jtag_vpi_init();
   }
   for (;;) {

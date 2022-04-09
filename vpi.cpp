@@ -47,7 +47,7 @@ bool jtag_vpi_init() {
     perror("listen");
     return false;
   }
-  printf("JTAG vpi server listening at :12345\n");
+  printf("Start jtag_vpi server at :12345\n");
 
   mpsse_init();
 

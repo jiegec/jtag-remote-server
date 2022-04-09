@@ -51,7 +51,7 @@ void jtag_xvc_init() {
   uint8_t setup[256] = {SET_BITS_LOW,  0x88, 0x8b, TCK_DIVISOR,   0x01, 0x00,
                         SET_BITS_HIGH, 0,    0,    SEND_IMMEDIATE};
   if (ftdi_write_data(ftdi, setup, 10) != 10) {
-    printf("error: %s\n", ftdi_get_error_string(ftdi));
+    printf("Error: %s\n", ftdi_get_error_string(ftdi));
     return;
   }
 
@@ -68,7 +68,7 @@ void jtag_xvc_init() {
 
   res = listen(listen_fd, 0);
   assert(res >= 0);
-  printf("Listening at port 2542\n");
+  printf("Start xvc server at :2542\n");
 }
 
 void jtag_xvc_tick() {
@@ -173,7 +173,7 @@ void jtag_xvc_tick() {
               print_bitvec((unsigned char *)&tms_val, region_bits);
               printf("\n");
               if (ftdi_write_data(ftdi, data, 3) != 3) {
-                printf("error: %s\n", ftdi_get_error_string(ftdi));
+                printf("Error: %s\n", ftdi_get_error_string(ftdi));
                 return;
               }
 
@@ -207,7 +207,7 @@ void jtag_xvc_tick() {
             printf("\n");
             if (ftdi_write_data(ftdi, data, 3 + tdi_whole_bytes) !=
                 3 + tdi_whole_bytes) {
-              printf("error: %s\n", ftdi_get_error_string(ftdi));
+              printf("Error: %s\n", ftdi_get_error_string(ftdi));
               return;
             }
           }
@@ -224,7 +224,7 @@ void jtag_xvc_tick() {
                          tdi_bits % 8);
             printf("\n");
             if (ftdi_write_data(ftdi, data, 3) != 3) {
-              printf("error: %s\n", ftdi_get_error_string(ftdi));
+              printf("Error: %s\n", ftdi_get_error_string(ftdi));
               return;
             }
           }
