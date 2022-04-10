@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
   while (!stop) {
     uint64_t current_time = get_time_ns();
     if (current_time - last_time > 1000000000l) {
-      printf("\rSpeed: %.2lf kbps",
+      fprintf(stderr, "\rSpeed: %.2lf kbps",
              (double)((bits_send - last_bits_send) * 1000000000l / 1000) /
                  (current_time - last_time));
       last_time = current_time;

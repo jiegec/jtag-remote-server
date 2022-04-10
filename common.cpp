@@ -86,8 +86,11 @@ bool mpsse_init() {
   ftdi_set_bitmode(ftdi, 0, 0);
   ftdi_set_bitmode(ftdi, 0, BITMODE_MPSSE);
 
-  uint8_t setup[256] = {SET_BITS_LOW,  0x88, 0x8b, TCK_DIVISOR,   0x01, 0x00,
-                        SET_BITS_HIGH, 0,    0,    SEND_IMMEDIATE};
+  // set clock to base / ((1 + 1) * 2)
+  // when "divide by 5" is disabled, base clock is 60MHz
+  uint8_t setup[256] = {
+      SET_BITS_LOW, 0x88, 0x8b,      SET_BITS_HIGH, 0, 0, TCK_DIVISOR,
+      0x01,         0x00, DIS_DIV_5, SEND_IMMEDIATE};
   if (ftdi_write_data(ftdi, setup, 10) != 10) {
     printf("Error: %s\n", ftdi_get_error_string(ftdi));
     return false;
