@@ -323,3 +323,32 @@ bool try_accept() {
   }
   return false;
 }
+
+bool jtag_clock_tck(size_t times) {
+  size_t times_8 = times / 8;
+  if (times_8) {
+    // Clock For n x 8 bits with no data transfer
+    uint8_t buf[256] = {
+        0x8F,
+        (uint8_t)((times_8 - 1) & 0xFF),
+        (uint8_t)((times_8 - 1) >> 8),
+    };
+    if (ftdi_write_data(ftdi, buf, 3) != 3) {
+      printf("Error: %s\n", ftdi_get_error_string(ftdi));
+      return false;
+    }
+  }
+
+  if (times % 8) {
+    // Clock For n bits with no data transfer
+    uint8_t buf[256] = {
+        0x8E,
+        (uint8_t)((times % 8) - 1),
+    };
+    if (ftdi_write_data(ftdi, buf, 2) != 2) {
+      printf("Error: %s\n", ftdi_get_error_string(ftdi));
+      return false;
+    }
+  }
+  return true;
+}

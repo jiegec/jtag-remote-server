@@ -160,12 +160,22 @@ void jtag_xvc_tick() {
                 region.is_tms ? "TMS" : "DATA");
         if (region.is_tms) {
           uint8_t tms_buffer[BUFFER_SIZE] = {};
+          // optimize runtest with a large number of cycles
+          bool clock_only = state == JtagState::RunTestIdle;
           for (int i = region.begin; i < region.end; i++) {
             uint8_t tms_bit = (tms[i / 8] >> (i % 8)) & 0x1;
             int off = i - region.begin;
             tms_buffer[off / 8] |= tms_bit << (off % 8);
+            if (tms_bit) {
+              clock_only = false;
+            }
           }
-          jtag_tms_seq(tms_buffer, region.end - region.begin);
+          if (clock_only) {
+            jtag_tms_seq(tms_buffer, 1);
+            jtag_clock_tck(region.end - region.begin - 1);
+          } else {
+            jtag_tms_seq(tms_buffer, region.end - region.begin);
+          }
         } else {
           uint8_t tdi_buffer[BUFFER_SIZE] = {};
           for (int i = region.begin; i < region.end; i++) {
