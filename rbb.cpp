@@ -19,6 +19,7 @@ void jtag_rbb_tick() {
     char tdi_input[BUFFER_SIZE];
     char read_input[BUFFER_SIZE];
     char read_buffer[BUFFER_SIZE];
+    char send_buffer[BUFFER_SIZE];
 
     ssize_t num_read = read(client_fd, read_buffer, sizeof(read_buffer));
     if (num_read <= 0) {
@@ -109,19 +110,11 @@ void jtag_rbb_tick() {
           for (int i = 0; i < region.end - region.begin; i++) {
             uint8_t tdo_bit = (tdo_buffer[i / 8] >> (i % 8)) & 0x1;
 
-            char send = tdo_bit ? '1' : '0';
-
-            while (1) {
-              ssize_t sent = write(client_fd, &send, sizeof(send));
-              if (sent > 0) {
-                break;
-              } else if (send < 0) {
-                close(client_fd);
-                client_fd = -1;
-                break;
-              }
-            }
+            send_buffer[i] = tdo_bit ? '1' : '0';
           }
+
+          write_full(client_fd, (uint8_t *)send_buffer,
+                     region.end - region.begin);
         }
       }
     }
