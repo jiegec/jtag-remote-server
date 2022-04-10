@@ -19,3 +19,9 @@ Supported protocols:
 - JTAG vpi: for OpenOCD
 
 Some example OpenOCD configs are provided under `examples` directory.
+
+## Performance
+
+Some testing reveals that this tool can run at 4Mbps(jtag_vpi mode), while local OpenOCD can run at 15Mbps(or higher). The difference here is mainly due to sequential firing of usb requests: in OpenOCD, there is a jtag queue and the ftdi driver can send many asynchronous requests at the same time; however, jtag_vpi processes the commands in order(write to socket, read from socket, loop).
+
+So, if you have local access, you should consider the performance loss before using this tool.
