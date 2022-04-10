@@ -170,7 +170,7 @@ void jtag_xvc_tick() {
       regions.push_back(region);
 
       for (auto region : regions) {
-        assert(region.begin != region.end);
+        assert(region.begin < region.end && region.end <= bits);
         dprintf("[%d:%d]: %s\n", region.begin, region.end,
                 region.is_tms ? "TMS" : "DATA");
         if (region.is_tms) {

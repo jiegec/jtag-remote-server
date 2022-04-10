@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
   // https://man7.org/linux/man-pages/man3/getopt.3.html
   int opt;
   Protocol proto = Protocol::VPI;
-  while ((opt = getopt(argc, argv, "dvrxc:")) != -1) {
+  while ((opt = getopt(argc, argv, "dvrxc:p:")) != -1) {
     switch (opt) {
     case 'd':
       debug = true;
@@ -69,13 +69,17 @@ int main(int argc, char *argv[]) {
         ftdi_channel = (ftdi_interface)(optarg[0] - 'A' + 1);
       }
       break;
+    case 'p':
+      sscanf(optarg, "%x", &ftdi_pid);
+      break;
     default: /* '?' */
-      fprintf(stderr, "Usage: %s [-d] [-v|-r] name\n", argv[0]);
+      fprintf(stderr, "Usage: %s [-d] [-v|-r] [-p pid]\n", argv[0]);
       fprintf(stderr, "\t-d: Enable debug messages\n");
       fprintf(stderr, "\t-v: Use jtag_vpi protocol\n");
       fprintf(stderr, "\t-r: Use remote bitbang protocol\n");
       fprintf(stderr, "\t-x: Use xilinx virtual cable protocol\n");
       fprintf(stderr, "\t-c A|B|C|D: Select ftdi channel\n");
+      fprintf(stderr, "\t-p PID: Specify usb pid\n");
       return 1;
     }
   }
