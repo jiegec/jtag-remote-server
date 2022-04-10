@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <ftdi.h>
 #include <sys/signal.h>
+#include <time.h>
 #include <unistd.h>
 
 struct ftdi_context *ftdi;
@@ -19,6 +20,7 @@ int ftdi_pid = 0x6011;
 enum ftdi_interface ftdi_channel = INTERFACE_A;
 
 bool stop = false;
+uint64_t bits_send = 0;
 
 void sigint_handler(int sig) {
   printf("Gracefully shutdown\n");
@@ -51,6 +53,12 @@ bool ftdi_init() {
   ret = ftdi_set_latency_timer(ftdi, 1); // reduce latency
   assert(ret == 0);
   return true;
+}
+
+uint64_t get_time_ns() {
+  struct timeval tv = {};
+  gettimeofday(&tv, NULL);
+  return (uint64_t)tv.tv_sec * 1000000000 + (uint64_t)tv.tv_usec * 1000;
 }
 
 enum Protocol { VPI, RBB, XVC };
@@ -109,7 +117,17 @@ int main(int argc, char *argv[]) {
     printf("Use xilinx virtual cable protocol\n");
     jtag_xvc_init();
   }
+  uint64_t last_time = get_time_ns();
+  uint64_t last_bits_send = 0;
   while (!stop) {
+    uint64_t current_time = get_time_ns();
+    if (current_time - last_time > 1000000000l) {
+      printf("\rSpeed: %.2lf kbps",
+             (double)((bits_send - last_bits_send) * 1000000000l / 1000) /
+                 (current_time - last_time));
+      last_time = current_time;
+      last_bits_send = bits_send;
+    }
     if (proto == Protocol::RBB) {
       jtag_rbb_tick();
     } else if (proto == Protocol::VPI) {

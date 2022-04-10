@@ -103,6 +103,7 @@ bool jtag_fsm_reset() {
 }
 
 bool jtag_tms_seq(const uint8_t *data, size_t num_bits) {
+  bits_send += num_bits;
   dprintf("Sending TMS Seq ");
   print_bitvec(data, num_bits);
   dprintf("\n");
@@ -152,6 +153,7 @@ void print_bitvec(const uint8_t *data, size_t bits) {
 
 bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
                      bool flip_tms) {
+  bits_send += num_bits;
   dprintf("Write TDI%s %d bits: ", flip_tms ? "+TMS" : "", num_bits);
   print_bitvec(data, num_bits);
   dprintf("\n");
@@ -333,6 +335,7 @@ bool try_accept() {
 }
 
 bool jtag_clock_tck(size_t times) {
+  bits_send += times;
   size_t times_8 = times / 8;
   if (times_8) {
     // Clock For n x 8 bits with no data transfer
