@@ -205,7 +205,7 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
             state_to_string(new_state));
     state = new_state;
 
-    uint8_t bit = (data[num_bits / 8] >> ((num_bits - 1) % 8)) & 1;
+    uint8_t bit = (data[(num_bits - 1) / 8] >> ((num_bits - 1) % 8)) & 1;
     uint8_t buf[3] = {MPSSE_DO_READ | MPSSE_WRITE_TMS | MPSSE_LSB |
                           MPSSE_BITMODE | MPSSE_WRITE_NEG,
                       // length in bits -1
@@ -222,6 +222,7 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
 
   // read bulk
   size_t len = (bulk_bits + 7) / 8;
+  memset(recv, 0, len);
   size_t offset = 0;
   while (len > offset) {
     int read = ftdi_read_data(ftdi, &recv[offset], len - offset);
@@ -232,13 +233,19 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
     offset += read;
   }
 
+  if (bulk_bits % 8) {
+    // a length of 1 bit will have the data bit sampled in bit 7 of the byte
+    // sent back to the PC
+    recv[bulk_bits / 8] >>= 8 - (bulk_bits % 8);
+  }
+
   // handle last bit when TMS=1
   if (flip_tms) {
     uint8_t last_bit;
     while (ftdi_read_data(ftdi, &last_bit, 1) != 1)
       ;
 
-    recv[num_bits / 8] |= last_bit << ((num_bits - 1) % 8);
+    recv[(num_bits - 1) / 8] |= last_bit << ((num_bits - 1) % 8);
   }
 
   dprintf("Read TDO: ");

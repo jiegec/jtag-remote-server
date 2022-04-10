@@ -6,6 +6,7 @@ bool jtag_rbb_init() {
   }
 
   printf("Start remote bitbang server at :12345\n");
+  fflush(stdout);
 
   // D0, D1, D3 output, D2 input 0b1011
   int ret = ftdi_set_bitmode(ftdi, 0x0b, BITMODE_SYNCBB);
@@ -31,6 +32,7 @@ void jtag_write_xfer() {
 }
 
 void jtag_write(int tck, int tms, int tdi) {
+  // dprintf("TCK=%d TMS=%d TDI=%d\n", tck, tms, tdi);
   if (tck) {
     JtagState new_state = next_state(state, tms);
     if (new_state != state) {
@@ -60,6 +62,7 @@ int jtag_read() {
     int res = (jtag_write_buffer[jtag_write_buffer.size() - 1] >> 2) & 1;
 
     jtag_write_buffer.clear();
+    // dprintf("TDO=%d\n", res);
     return res;
   } else {
     return 0;
