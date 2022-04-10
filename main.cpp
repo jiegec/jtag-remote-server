@@ -4,6 +4,8 @@
 #include "xvc.h"
 #include <assert.h>
 #include <ftdi.h>
+#include <sys/signal.h>
+#include <unistd.h>
 
 struct ftdi_context *ftdi;
 int client_fd = -1;
@@ -15,6 +17,13 @@ bool debug = false;
 int ftdi_vid = 0x0403;
 int ftdi_pid = 0x6011;
 enum ftdi_interface ftdi_channel = INTERFACE_A;
+
+bool stop = false;
+
+void sigint_handler(int sig) {
+  printf("Gracefully shutdown\n");
+  stop = true;
+}
 
 bool ftdi_init() {
   printf("Initialize ftdi\n");
@@ -47,6 +56,8 @@ bool ftdi_init() {
 enum Protocol { VPI, RBB, XVC };
 
 int main(int argc, char *argv[]) {
+  signal(SIGINT, sigint_handler);
+
   // https://man7.org/linux/man-pages/man3/getopt.3.html
   int opt;
   Protocol proto = Protocol::VPI;
@@ -98,7 +109,7 @@ int main(int argc, char *argv[]) {
     printf("Use xilinx virtual cable protocol\n");
     jtag_xvc_init();
   }
-  for (;;) {
+  while (!stop) {
     if (proto == Protocol::RBB) {
       jtag_rbb_tick();
     } else if (proto == Protocol::VPI) {
