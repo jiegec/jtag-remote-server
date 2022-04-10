@@ -1,41 +1,12 @@
 #include "common.h"
 
-int jtag_rbb_init() {
-  // ref rocket chip remote_bitbang.cc
-  listen_fd = socket(AF_INET, SOCK_STREAM, 0);
-  if (listen_fd < 0) {
-    perror("socket");
-    return -1;
-  }
-
-  // set non blocking
-  fcntl(listen_fd, F_SETFL, O_NONBLOCK);
-
-  int reuseaddr = 1;
-  if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(int)) <
-      0) {
-    perror("setsockopt");
-    return -1;
-  }
-
-  int port = 12345;
-  struct sockaddr_in addr = {};
-  addr.sin_family = AF_INET;
-  addr.sin_addr.s_addr = INADDR_ANY;
-  addr.sin_port = htons(port);
-
-  if (bind(listen_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-    perror("bind");
-    return -1;
-  }
-
-  if (listen(listen_fd, 1) == -1) {
-    perror("listen");
-    return -1;
+bool jtag_rbb_init() {
+  if (!setup_tcp_server(12345)) {
+    return false;
   }
   printf("Start remote bitbang server at :12345\n");
 
-  return 0;
+  return true;
 }
 
 std::vector<unsigned char> jtag_write_buffer;

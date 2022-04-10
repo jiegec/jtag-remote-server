@@ -47,7 +47,7 @@ struct Region {
   int end;
 };
 
-void jtag_xvc_init() {
+bool jtag_xvc_init() {
   ftdi_set_interface(ftdi, INTERFACE_A);
   ftdi_set_bitmode(ftdi, 0, BITMODE_MPSSE);
 
@@ -56,30 +56,15 @@ void jtag_xvc_init() {
                         SET_BITS_HIGH, 0,    0,    SEND_IMMEDIATE};
   if (ftdi_write_data(ftdi, setup, 10) != 10) {
     printf("Error: %s\n", ftdi_get_error_string(ftdi));
-    return;
+    return false;
   }
 
-  listen_fd = socket(AF_INET, SOCK_STREAM, 0);
-  assert(listen_fd >= 0);
-
-  int reuseaddr = 1;
-  if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(int)) <
-      0) {
-    perror("setsockopt");
-    return;
+  if (!setup_tcp_server(2542)) {
+    return false;
   }
 
-  sockaddr_in listen_addr = {};
-  listen_addr.sin_addr.s_addr = INADDR_ANY;
-  listen_addr.sin_port = htons(2542);
-  listen_addr.sin_family = AF_INET;
-
-  int res = bind(listen_fd, (sockaddr *)&listen_addr, sizeof(listen_addr));
-  assert(res >= 0);
-
-  res = listen(listen_fd, 0);
-  assert(res >= 0);
   printf("Start xvc server at :2542\n");
+  return true;
 }
 
 const int BUFFER_SIZE = 4096;
