@@ -174,18 +174,16 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
   // send whole bytes first
   size_t length_in_bytes = bulk_bits / 8;
   if (length_in_bytes) {
-    std::vector<uint8_t> buffer;
-    buffer.push_back(MPSSE_DO_READ | MPSSE_DO_WRITE | MPSSE_LSB |
-                     MPSSE_WRITE_NEG);
-    // length in bytes -1 lo
-    buffer.push_back((length_in_bytes - 1) & 0xff);
-    // length in bytes -1 hi
-    buffer.push_back((length_in_bytes - 1) >> 8);
-    // data
-    buffer.insert(buffer.end(), &data[0], &data[length_in_bytes]);
-    assert(buffer.size() == 3 + length_in_bytes);
+    uint8_t buf[256] = {MPSSE_DO_READ | MPSSE_DO_WRITE | MPSSE_LSB |
+                            MPSSE_WRITE_NEG,
+                        (uint8_t)((length_in_bytes - 1) & 0xff),
+                        (uint8_t)((length_in_bytes - 1) >> 8)};
+    if (ftdi_write_data(ftdi, buf, 3) != 3) {
+      printf("Error: %s\n", ftdi_get_error_string(ftdi));
+      return false;
+    }
 
-    if (ftdi_write_data(ftdi, buffer.data(), buffer.size()) != buffer.size()) {
+    if (ftdi_write_data(ftdi, data, length_in_bytes) != length_in_bytes) {
       printf("Error: %s\n", ftdi_get_error_string(ftdi));
       return false;
     }
