@@ -297,7 +297,7 @@ bool setup_tcp_server(uint16_t port) {
   }
 
   // set non blocking
-  fcntl(listen_fd, F_SETFL, O_NONBLOCK);
+  // fcntl(listen_fd, F_SETFL, O_NONBLOCK);
 
   int reuseaddr = 1;
   if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(int)) <
@@ -328,7 +328,7 @@ bool try_accept() {
   // accept connection
   client_fd = accept(listen_fd, NULL, NULL);
   if (client_fd > 0) {
-    fcntl(client_fd, F_SETFL, O_NONBLOCK);
+    // fcntl(client_fd, F_SETFL, O_NONBLOCK);
 
     // set nodelay
     int flags = 1;
