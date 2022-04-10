@@ -33,6 +33,7 @@ void jtag_write_xfer() {
 
 void jtag_write(int tck, int tms, int tdi) {
   // dprintf("TCK=%d TMS=%d TDI=%d\n", tck, tms, tdi);
+  bits_send++;
   if (tck) {
     JtagState new_state = next_state(state, tms);
     if (new_state != state) {
