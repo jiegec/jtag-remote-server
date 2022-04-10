@@ -134,11 +134,12 @@ void jtag_xvc_tick() {
       // send tms & read
       int shift_pos = 0;
       std::vector<Region> regions;
+      JtagState cur_state = state;
       for (int i = 0; i < bits; i++) {
         uint8_t tms_bit = (tms[i / 8] >> (i % 8)) & 0x1;
-        JtagState new_state = next_state(state, tms_bit);
-        if ((state != ShiftDR && new_state == ShiftDR) ||
-            (state != ShiftIR && new_state == ShiftIR)) {
+        JtagState new_state = next_state(cur_state, tms_bit);
+        if ((cur_state != ShiftDR && new_state == ShiftDR) ||
+            (cur_state != ShiftIR && new_state == ShiftIR)) {
           Region region;
           region.is_tms = true;
           region.begin = shift_pos;
@@ -146,8 +147,8 @@ void jtag_xvc_tick() {
           regions.push_back(region);
 
           shift_pos = i + 1;
-        } else if ((state == ShiftDR && new_state != ShiftDR) ||
-                   (state == ShiftIR && new_state != ShiftIR)) {
+        } else if ((cur_state == ShiftDR && new_state != ShiftDR) ||
+                   (cur_state == ShiftIR && new_state != ShiftIR)) {
           // end
           Region region;
           region.is_tms = false;
@@ -158,11 +159,7 @@ void jtag_xvc_tick() {
 
           shift_pos = i + 1;
         }
-        if (state != new_state) {
-          dprintf("state %s -> %s\n", state_to_string(state),
-                  state_to_string(new_state));
-        }
-        state = new_state;
+        cur_state = new_state;
       }
 
       Region region;
@@ -171,7 +168,9 @@ void jtag_xvc_tick() {
       region.begin = shift_pos;
       region.end = bits;
       regions.push_back(region);
+
       for (auto region : regions) {
+        assert(region.begin != region.end);
         dprintf("[%d:%d]: %s\n", region.begin, region.end,
                 region.is_tms ? "TMS" : "DATA");
         if (region.is_tms) {
@@ -201,6 +200,7 @@ void jtag_xvc_tick() {
           }
         }
       }
+      assert(cur_state == state);
 
       dprintf(" tdo:");
       print_bitvec(tdo, bits);
