@@ -148,7 +148,7 @@ void jtag_xvc_tick() {
       }
 
       Region region;
-      region.is_tms = state != ShiftDR && state != ShiftIR;
+      region.is_tms = cur_state != ShiftDR && cur_state != ShiftIR;
       region.flip_tms = false;
       region.begin = shift_pos;
       region.end = bits;
