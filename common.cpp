@@ -141,17 +141,21 @@ bool jtag_tms_seq(const uint8_t *data, size_t num_bits) {
 }
 
 void print_bitvec(const uint8_t *data, size_t bits) {
+  if (!debug) {
+    return;
+  }
+
   for (size_t i = 0; i < bits; i++) {
     int off = i % 8;
     int bit = ((data[i / 8]) >> off) & 1;
-    dprintf("%c", bit ? '1' : '0');
+    printf("%c", bit ? '1' : '0');
   }
-  dprintf("(0x");
+  printf("(0x");
   int bytes = (bits + 7) / 8;
   for (int i = bytes - 1; i >= 0; i--) {
-    dprintf("%02X", data[i]);
+    printf("%02X", data[i]);
   }
-  dprintf(")");
+  printf(")");
 }
 
 bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
@@ -276,11 +280,12 @@ bool write_full(int fd, const uint8_t *data, size_t count) {
 }
 
 void dprintf(const char *fmt, ...) {
+  if (!debug) {
+    return;
+  }
   va_list va_args;
   va_start(va_args, fmt);
-  if (debug) {
-    vprintf(fmt, va_args);
-  }
+  vprintf(fmt, va_args);
   va_end(va_args);
 }
 

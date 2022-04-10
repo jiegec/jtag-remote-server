@@ -48,7 +48,7 @@ bool ftdi_init() {
 
   ret = ftdi_usb_reset(ftdi);
   assert(ret == 0);
-  ret = ftdi_set_baudrate(ftdi, 62500); // 1MBaud
+  ret = ftdi_set_baudrate(ftdi, 115200);
   assert(ret == 0);
   ret = ftdi_set_latency_timer(ftdi, 1); // reduce latency
   assert(ret == 0);

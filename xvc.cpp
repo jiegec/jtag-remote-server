@@ -68,12 +68,12 @@ bool jtag_xvc_init() {
 }
 
 const int BUFFER_SIZE = 4096;
+char buffer[BUFFER_SIZE];
+char tms[BUFFER_SIZE];
+char tdi[BUFFER_SIZE];
+uint8_t tdo[BUFFER_SIZE] = {};
 void jtag_xvc_tick() {
   if (client_fd >= 0) {
-    char buffer[BUFFER_SIZE];
-    char tms[BUFFER_SIZE];
-    char tdi[BUFFER_SIZE];
-    uint8_t tdo[BUFFER_SIZE] = {};
 
     if (!sread(client_fd, buffer, 2)) {
       // remote socket closed
@@ -109,6 +109,7 @@ void jtag_xvc_tick() {
       uint32_t bytes = (bits + 7) / 8;
       assert(sread(client_fd, tms, bytes));
       assert(sread(client_fd, tdi, bytes));
+      memset(tdo, 0, bytes);
       dprintf(" tms:");
       print_bitvec((unsigned char *)tms, bits);
       dprintf("\n");
