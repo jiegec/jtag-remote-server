@@ -22,8 +22,10 @@ Some example OpenOCD configs are provided under `examples` directory.
 
 ## Performance
 
-Some testing reveals that this tool can run at 4Mbps(jtag_vpi mode) & 2Mbps(xvc mode), while local OpenOCD can run at 15Mbps(or higher). The difference here is mainly due to the sequential firing of usb requests:
+Some testing reveals that this tool can run at 14Mbps(rbb mode)/4Mbps(jtag_vpi mode)/2Mbps(xvc mode) when programming bitstream to FPGA. The speed of 14Mbps is mainly limited by the 15MHz jtag clock and could be faster if using a faster clock.
 
-In OpenOCD, there is a global jtag command queue and the ftdi driver can send many asynchronous requests at the same time upon `ftdi_execute_queue()`; however, jtag_vpi processes the commands in order(write to socket, read from socket, loop); for bitbang-like protocols(remote bitbang/xilinx virtual cable), it heavily depends on the client implementation(this tool serves as the server). In OpenOCD, the remote bitbang driver collects commands in a queue and sends them in bulk, so there is some possiblity to improve the performance by decoding the bit sequence and sending request ahead. Vivado is closed-source, so we do not know the implentation details.
+Let us analyze the difference. Both jtag_vpi & xvc mode reads tdo upon shifting, while remote bitbang might not. We made a small optimization to skip reading from mpsse for remote bitbang mode when the client does not send `R` to the server. In jtag_vpi & xvc mode however, it has to read every bit shifted out of tdo, and runs `write, read` sequence in a loop. This leads to a great bandwidth loss, because we have to wait the latency for each request.
 
-So, if you have local access, you should consider the performance loss before using this tool.
+A possible improvement is to group all the write requests and send them at once, and then read the responses back. This is exactly what OpenOCD has done. In OpenOCD, there is a global jtag command queue and the ftdi driver can send many asynchronous requests at the same time upon `ftdi_execute_queue()`; the jtag_vpi driver on the other hand, always runs `write + read` for each request in the queue.
+
+The analysis above mainly focues on fpga programming, where in the most time, tdo is omitted to optimize performance. In other cases, like gdb debugging, further optimization needs to be employed.
