@@ -6,8 +6,6 @@ bool jtag_rbb_init() {
   }
 
   printf("Start remote bitbang server at :12345\n");
-
-  mpsse_init();
   return true;
 }
 

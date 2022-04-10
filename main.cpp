@@ -21,6 +21,7 @@ enum ftdi_interface ftdi_channel = INTERFACE_A;
 
 bool stop = false;
 uint64_t bits_send = 0;
+uint64_t freq_mhz = 15;
 
 void sigint_handler(int sig) {
   printf("Gracefully shutdown\n");
@@ -52,7 +53,7 @@ bool ftdi_init() {
   assert(ret == 0);
   ret = ftdi_set_latency_timer(ftdi, 1); // reduce latency
   assert(ret == 0);
-  return true;
+  return mpsse_init();
 }
 
 uint64_t get_time_ns() {
@@ -69,7 +70,7 @@ int main(int argc, char *argv[]) {
   // https://man7.org/linux/man-pages/man3/getopt.3.html
   int opt;
   Protocol proto = Protocol::VPI;
-  while ((opt = getopt(argc, argv, "dvrxc:p:")) != -1) {
+  while ((opt = getopt(argc, argv, "dvrxc:p:f:")) != -1) {
     switch (opt) {
     case 'd':
       debug = true;
@@ -91,14 +92,18 @@ int main(int argc, char *argv[]) {
     case 'p':
       sscanf(optarg, "%x", &ftdi_pid);
       break;
+    case 'f':
+      sscanf(optarg, "%d", &freq_mhz);
+      break;
     default: /* '?' */
-      fprintf(stderr, "Usage: %s [-d] [-v|-r] [-p pid]\n", argv[0]);
+      fprintf(stderr, "Usage: %s [-d] [-v|-r] [-p pid] [-f freq]\n", argv[0]);
       fprintf(stderr, "\t-d: Enable debug messages\n");
       fprintf(stderr, "\t-v: Use jtag_vpi protocol\n");
       fprintf(stderr, "\t-r: Use remote bitbang protocol\n");
       fprintf(stderr, "\t-x: Use xilinx virtual cable protocol\n");
       fprintf(stderr, "\t-c A|B|C|D: Select ftdi channel\n");
       fprintf(stderr, "\t-p PID: Specify usb pid\n");
+      fprintf(stderr, "\t-f FREQ: Specify jtag clock frequency in MHz\n");
       return 1;
     }
   }

@@ -39,6 +39,7 @@ enum JtagState {
 
 extern JtagState state;
 extern uint64_t bits_send;
+extern uint64_t freq_mhz;
 
 JtagState next_state(JtagState cur, int bit);
 const char *state_to_string(JtagState state);

@@ -41,8 +41,6 @@ static int swrite(int fd, char *target, int len) {
 }
 
 bool jtag_xvc_init() {
-  mpsse_init();
-
   if (!setup_tcp_server(2542)) {
     return false;
   }

@@ -20,9 +20,6 @@ bool jtag_vpi_init() {
     return false;
   }
   printf("Start jtag_vpi server at :12345\n");
-
-  mpsse_init();
-
   return true;
 }
 

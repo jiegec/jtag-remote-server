@@ -88,9 +88,13 @@ bool mpsse_init() {
 
   // set clock to base / ((1 + 1) * 2)
   // when "divide by 5" is disabled, base clock is 60MHz
+  int divisor = (60 / 2 + freq_mhz - 1) / freq_mhz - 1;
+  int actual_freq = 60 / ((1 + divisor) * 2);
+  printf("Requested jtag tck: %d MHz\n", freq_mhz);
+  printf("Actual jtag tck: %d MHz\n", actual_freq);
   uint8_t setup[256] = {
-      SET_BITS_LOW, 0x88, 0x8b,      SET_BITS_HIGH, 0, 0, TCK_DIVISOR,
-      0x01,         0x00, DIS_DIV_5, SEND_IMMEDIATE};
+      SET_BITS_LOW,     0x88, 0x8b,      SET_BITS_HIGH, 0, 0, TCK_DIVISOR,
+      (uint8_t)divisor, 0x00, DIS_DIV_5, SEND_IMMEDIATE};
   if (ftdi_write_data(ftdi, setup, 10) != 10) {
     printf("Error: %s\n", ftdi_get_error_string(ftdi));
     return false;
