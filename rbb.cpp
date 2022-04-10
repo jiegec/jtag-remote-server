@@ -17,6 +17,7 @@ void jtag_rbb_tick() {
   if (client_fd >= 0) {
     char tms_input[BUFFER_SIZE];
     char tdi_input[BUFFER_SIZE];
+    char read_input[BUFFER_SIZE];
     char read_buffer[BUFFER_SIZE];
 
     ssize_t num_read = read(client_fd, read_buffer, sizeof(read_buffer));
@@ -29,8 +30,10 @@ void jtag_rbb_tick() {
     }
 
     size_t bits = 0;
+    size_t read_bits = 0;
     memset(tms_input, 0, (num_read + 7) / 8);
     memset(tdi_input, 0, (num_read + 7) / 8);
+    memset(read_input, 0, (num_read + 7) / 8);
     for (int i = 0; i < num_read; i++) {
       char command = read_buffer[i];
       if ('0' <= command && command <= '7') {
@@ -46,6 +49,8 @@ void jtag_rbb_tick() {
         }
       } else if (command == 'R') {
         // read
+        read_input[bits / 8] |= 1 << (bits % 8);
+        read_bits++;
       } else if (command == 'r' || command == 's') {
         // trst = 0;
       } else if (command == 't' || command == 'u') {
@@ -53,10 +58,21 @@ void jtag_rbb_tick() {
       }
     }
 
+    dprintf(" tms:");
+    print_bitvec((unsigned char *)tms_input, bits);
+    dprintf("\n");
+    dprintf(" tdi:");
+    print_bitvec((unsigned char *)tdi_input, bits);
+    dprintf("\n");
+    dprintf(" read:");
+    print_bitvec((unsigned char *)read_input, bits);
+    dprintf("\n");
+
     JtagState cur_state = state;
     std::vector<Region> regions =
         analyze_bitbang((uint8_t *)tms_input, bits, cur_state);
 
+    uint32_t actual_read_bits = 0;
     for (auto region : regions) {
       assert(region.begin < region.end && region.end <= bits);
       dprintf("[%d:%d]: %s\n", region.begin, region.end,
@@ -71,35 +87,46 @@ void jtag_rbb_tick() {
         jtag_tms_seq(tms_buffer, region.end - region.begin);
       } else {
         uint8_t tdi_buffer[BUFFER_SIZE] = {};
+        bool do_read = false;
         for (int i = region.begin; i < region.end; i++) {
           uint8_t tdi_bit = (tdi_input[i / 8] >> (i % 8)) & 0x1;
           int off = i - region.begin;
           tdi_buffer[off / 8] |= tdi_bit << (off % 8);
+
+          uint8_t read_bit = (read_input[i / 8] >> (i % 8)) & 0x1;
+          if (read_bit) {
+            do_read = true;
+          }
         }
 
         uint8_t tdo_buffer[BUFFER_SIZE] = {};
         jtag_scan_chain(tdi_buffer, tdo_buffer, region.end - region.begin,
                         region.flip_tms);
 
-        for (int i = 0; i < region.end - region.begin; i++) {
-          uint8_t tdo_bit = (tdo_buffer[i / 8] >> (i % 8)) & 0x1;
+        // handle read
+        if (do_read) {
+          actual_read_bits += region.end - region.begin;
+          for (int i = 0; i < region.end - region.begin; i++) {
+            uint8_t tdo_bit = (tdo_buffer[i / 8] >> (i % 8)) & 0x1;
 
-          char send = tdo_bit ? '1' : '0';
+            char send = tdo_bit ? '1' : '0';
 
-          while (1) {
-            ssize_t sent = write(client_fd, &send, sizeof(send));
-            if (sent > 0) {
-              break;
-            } else if (send < 0) {
-              close(client_fd);
-              client_fd = -1;
-              break;
+            while (1) {
+              ssize_t sent = write(client_fd, &send, sizeof(send));
+              if (sent > 0) {
+                break;
+              } else if (send < 0) {
+                close(client_fd);
+                client_fd = -1;
+                break;
+              }
             }
           }
         }
       }
     }
     assert(cur_state == state);
+    assert(read_bits == actual_read_bits);
   } else {
     // accept connection
     try_accept();
