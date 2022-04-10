@@ -40,24 +40,8 @@ static int swrite(int fd, char *target, int len) {
   return 0;
 }
 
-struct Region {
-  bool is_tms;
-  bool flip_tms;
-  int begin;
-  int end;
-};
-
 bool jtag_xvc_init() {
-  ftdi_set_interface(ftdi, INTERFACE_A);
-  ftdi_set_bitmode(ftdi, 0, BITMODE_MPSSE);
-
-  // set clock and initial state
-  uint8_t setup[256] = {SET_BITS_LOW,  0x88, 0x8b, TCK_DIVISOR,   0x01, 0x00,
-                        SET_BITS_HIGH, 0,    0,    SEND_IMMEDIATE};
-  if (ftdi_write_data(ftdi, setup, 10) != 10) {
-    printf("Error: %s\n", ftdi_get_error_string(ftdi));
-    return false;
-  }
+  mpsse_init();
 
   if (!setup_tcp_server(2542)) {
     return false;
@@ -118,42 +102,9 @@ void jtag_xvc_tick() {
       dprintf("\n");
 
       // send tms & read
-      int shift_pos = 0;
-      std::vector<Region> regions;
       JtagState cur_state = state;
-      for (int i = 0; i < bits; i++) {
-        uint8_t tms_bit = (tms[i / 8] >> (i % 8)) & 0x1;
-        JtagState new_state = next_state(cur_state, tms_bit);
-        if ((cur_state != ShiftDR && new_state == ShiftDR) ||
-            (cur_state != ShiftIR && new_state == ShiftIR)) {
-          Region region;
-          region.is_tms = true;
-          region.begin = shift_pos;
-          region.end = i + 1;
-          regions.push_back(region);
-
-          shift_pos = i + 1;
-        } else if ((cur_state == ShiftDR && new_state != ShiftDR) ||
-                   (cur_state == ShiftIR && new_state != ShiftIR)) {
-          // end
-          Region region;
-          region.is_tms = false;
-          region.flip_tms = true;
-          region.begin = shift_pos;
-          region.end = i + 1;
-          regions.push_back(region);
-
-          shift_pos = i + 1;
-        }
-        cur_state = new_state;
-      }
-
-      Region region;
-      region.is_tms = cur_state != ShiftDR && cur_state != ShiftIR;
-      region.flip_tms = false;
-      region.begin = shift_pos;
-      region.end = bits;
-      regions.push_back(region);
+      std::vector<Region> regions =
+          analyze_bitbang((uint8_t *)tms, bits, cur_state);
 
       for (auto region : regions) {
         assert(region.begin < region.end && region.end <= bits);

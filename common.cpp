@@ -369,3 +369,46 @@ bool jtag_clock_tck(size_t times) {
   }
   return true;
 }
+
+std::vector<Region> analyze_bitbang(const uint8_t *tms, size_t bits,
+                                    JtagState &cur_state) {
+  int shift_pos = 0;
+  std::vector<Region> regions;
+  cur_state = state;
+  for (int i = 0; i < bits; i++) {
+    uint8_t tms_bit = (tms[i / 8] >> (i % 8)) & 0x1;
+    JtagState new_state = next_state(cur_state, tms_bit);
+    if ((cur_state != ShiftDR && new_state == ShiftDR) ||
+        (cur_state != ShiftIR && new_state == ShiftIR)) {
+      Region region;
+      region.is_tms = true;
+      region.begin = shift_pos;
+      region.end = i + 1;
+      regions.push_back(region);
+
+      shift_pos = i + 1;
+    } else if ((cur_state == ShiftDR && new_state != ShiftDR) ||
+               (cur_state == ShiftIR && new_state != ShiftIR)) {
+      // end
+      Region region;
+      region.is_tms = false;
+      region.flip_tms = true;
+      region.begin = shift_pos;
+      region.end = i + 1;
+      regions.push_back(region);
+
+      shift_pos = i + 1;
+    }
+    cur_state = new_state;
+  }
+
+  if (shift_pos != bits) {
+    Region region;
+    region.is_tms = cur_state != ShiftDR && cur_state != ShiftIR;
+    region.flip_tms = false;
+    region.begin = shift_pos;
+    region.end = bits;
+    regions.push_back(region);
+  }
+  return regions;
+}
