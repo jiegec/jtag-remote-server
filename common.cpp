@@ -235,7 +235,7 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
 
   if (bulk_bits % 8) {
     // a length of 1 bit will have the data bit sampled in bit 7 of the byte
-    // sent back to the PC
+    // sent back to the PC, so we need to shift this
     recv[bulk_bits / 8] >>= 8 - (bulk_bits % 8);
   }
 
@@ -245,7 +245,8 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
     while (ftdi_read_data(ftdi, &last_bit, 1) != 1)
       ;
 
-    recv[(num_bits - 1) / 8] |= last_bit << ((num_bits - 1) % 8);
+    // the bit read is at BIT 7
+    recv[(num_bits - 1) / 8] |= ((last_bit >> 7) & 1) << ((num_bits - 1) % 8);
   }
 
   dprintf("Read TDO: ");

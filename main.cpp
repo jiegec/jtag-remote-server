@@ -118,5 +118,6 @@ int main(int argc, char *argv[]) {
       jtag_xvc_tick();
     }
   }
+  fflush(stdout);
   return 0;
 }
