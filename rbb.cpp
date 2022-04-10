@@ -65,7 +65,7 @@ void jtag_rbb_tick() {
     dprintf(" tdi:");
     print_bitvec((unsigned char *)tdi_input, bits);
     dprintf("\n");
-    dprintf(" read:");
+    dprintf("read:");
     print_bitvec((unsigned char *)read_input, bits);
     dprintf("\n");
 
@@ -102,7 +102,7 @@ void jtag_rbb_tick() {
 
         uint8_t tdo_buffer[BUFFER_SIZE] = {};
         jtag_scan_chain(tdi_buffer, tdo_buffer, region.end - region.begin,
-                        region.flip_tms);
+                        region.flip_tms, do_read);
 
         // handle read
         if (do_read) {

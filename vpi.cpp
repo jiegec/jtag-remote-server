@@ -58,10 +58,12 @@ void jtag_vpi_tick() {
       } else if (cmd->cmd == CMD_TMS_SEQ) {
         jtag_tms_seq(cmd->buffer_out, cmd->nb_bits);
       } else if (cmd->cmd == CMD_SCAN_CHAIN) {
-        jtag_scan_chain(cmd->buffer_out, cmd->buffer_in, cmd->nb_bits, false);
+        // always read
+        jtag_scan_chain(cmd->buffer_out, cmd->buffer_in, cmd->nb_bits, false, true);
         write_full(client_fd, jtag_vpi_buffer, sizeof(struct jtag_vpi_cmd));
       } else if (cmd->cmd == CMD_SCAN_CHAIN_FLIP_TMS) {
-        jtag_scan_chain(cmd->buffer_out, cmd->buffer_in, cmd->nb_bits, true);
+        // always read
+        jtag_scan_chain(cmd->buffer_out, cmd->buffer_in, cmd->nb_bits, true, true);
         write_full(client_fd, jtag_vpi_buffer, sizeof(struct jtag_vpi_cmd));
       }
     }

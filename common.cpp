@@ -159,7 +159,7 @@ void print_bitvec(const uint8_t *data, size_t bits) {
 }
 
 bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
-                     bool flip_tms) {
+                     bool flip_tms, bool do_read) {
   bits_send += num_bits;
   dprintf("Write TDI%s %d bits: ", flip_tms ? "+TMS" : "", num_bits);
   print_bitvec(data, num_bits);
@@ -170,11 +170,12 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
     // last bit should be sent along TMS 0->1
     bulk_bits -= 1;
   }
+  uint8_t do_read_flag = do_read ? MPSSE_DO_READ : 0;
 
   // send whole bytes first
   size_t length_in_bytes = bulk_bits / 8;
   if (length_in_bytes) {
-    uint8_t buf[256] = {MPSSE_DO_READ | MPSSE_DO_WRITE | MPSSE_LSB |
+    uint8_t buf[256] = {do_read_flag | MPSSE_DO_WRITE | MPSSE_LSB |
                             MPSSE_WRITE_NEG,
                         (uint8_t)((length_in_bytes - 1) & 0xff),
                         (uint8_t)((length_in_bytes - 1) >> 8)};
@@ -192,7 +193,7 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
   // sent rest bits
   if (bulk_bits % 8) {
     uint8_t buf[256] = {
-        MPSSE_DO_READ | MPSSE_DO_WRITE | MPSSE_LSB | MPSSE_WRITE_NEG |
+        do_read_flag | MPSSE_DO_WRITE | MPSSE_LSB | MPSSE_WRITE_NEG |
             MPSSE_BITMODE,
         // length in bits -1
         (uint8_t)((bulk_bits % 8) - 1),
@@ -213,7 +214,7 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
     state = new_state;
 
     uint8_t bit = (data[(num_bits - 1) / 8] >> ((num_bits - 1) % 8)) & 1;
-    uint8_t buf[3] = {MPSSE_DO_READ | MPSSE_WRITE_TMS | MPSSE_LSB |
+    uint8_t buf[3] = {do_read_flag | MPSSE_WRITE_TMS | MPSSE_LSB |
                           MPSSE_BITMODE | MPSSE_WRITE_NEG,
                       // length in bits -1
                       0x00,
@@ -225,6 +226,11 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
       printf("Error: %s\n", ftdi_get_error_string(ftdi));
       return false;
     }
+  }
+
+  // speedup if read is not required
+  if (!do_read) {
+    return true;
   }
 
   // read bulk

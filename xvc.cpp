@@ -136,9 +136,10 @@ void jtag_xvc_tick() {
             tdi_buffer[off / 8] |= tdi_bit << (off % 8);
           }
 
+          // always read
           uint8_t tdo_buffer[BUFFER_SIZE] = {};
           jtag_scan_chain(tdi_buffer, tdo_buffer, region.end - region.begin,
-                          region.flip_tms);
+                          region.flip_tms, true);
 
           for (int i = region.begin; i < region.end; i++) {
             int off = i - region.begin;
