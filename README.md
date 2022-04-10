@@ -22,7 +22,7 @@ Some example OpenOCD configs are provided under `examples` directory.
 
 ## Performance
 
-Some testing reveals that this tool can run at 14Mbps(rbb mode)/4Mbps(jtag_vpi mode)/2Mbps(xvc mode) when programming bitstream to FPGA. The speed of 14Mbps is mainly limited by the 15MHz jtag clock and could be improved by using a faster clock if the jtag tap can work under 30MHz(maximum clock frequency is 60MHz / 2).
+Some testing reveals that this tool can run at 14Mbps(rbb mode)/4Mbps(jtag_vpi mode)/2Mbps(xvc mode) when programming bitstream to FPGA. The speed of 14Mbps is mainly limited by the 15MHz jtag clock and could be improved by using a faster clock if the jtag tap can work under 30MHz(maximum clock frequency is 60MHz / 2). As per DS893, maximum TCK frequency of Xilinx Virtex Ultrascale devices is 20MHz(SLR-based) or 50MHz(others).
 
 Let us analyze the difference. Both jtag_vpi & xvc mode reads tdo upon shifting, while remote bitbang might not. We made a small optimization to skip reading from mpsse for remote bitbang mode when the client does not send `R` to the server. In jtag_vpi & xvc mode however, it has to read every bit shifted out of tdo, and runs `write, read` sequence in a loop. This leads to a great bandwidth loss, because we have to wait the latency for each request.
 
