@@ -4,8 +4,12 @@ bool jtag_rbb_init() {
   if (!setup_tcp_server(12345)) {
     return false;
   }
+
   printf("Start remote bitbang server at :12345\n");
 
+  // D0, D1, D3 output, D2 input 0b1011
+  int ret = ftdi_set_bitmode(ftdi, 0x0b, BITMODE_SYNCBB);
+  assert(ret == 0);
   return true;
 }
 
@@ -109,21 +113,6 @@ void jtag_rbb_tick() {
     }
   } else {
     // accept connection
-    client_fd = accept(listen_fd, NULL, NULL);
-    if (client_fd > 0) {
-      fcntl(client_fd, F_SETFL, O_NONBLOCK);
-
-      // set nodelay
-      int flags = 1;
-      if (setsockopt(client_fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags,
-                     sizeof(flags)) < 0) {
-        perror("setsockopt");
-      }
-      printf("JTAG debugger attached\n");
-
-      // D0, D1, D3 output, D2 input 0b1011
-      int ret = ftdi_set_bitmode(ftdi, 0x0b, BITMODE_SYNCBB);
-      assert(ret == 0);
-    }
+    try_accept();
   }
 }

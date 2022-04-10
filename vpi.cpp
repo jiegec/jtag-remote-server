@@ -66,17 +66,6 @@ void jtag_vpi_tick() {
       }
     }
   } else {
-    client_fd = accept(listen_fd, NULL, NULL);
-    if (client_fd > 0) {
-      fcntl(client_fd, F_SETFL, O_NONBLOCK);
-
-      // set nodelay
-      int flags = 1;
-      if (setsockopt(client_fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags,
-                     sizeof(flags)) < 0) {
-        perror("setsockopt");
-      }
-      printf("JTAG debugger attached\n");
-    }
+    try_accept();
   }
 }

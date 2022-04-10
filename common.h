@@ -54,5 +54,6 @@ bool write_full(int fd, const uint8_t *data, size_t count);
 void dprintf(const char *fmt, ...);
 
 bool setup_tcp_server(uint16_t port);
+bool try_accept();
 
 #endif
