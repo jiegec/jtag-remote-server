@@ -56,6 +56,12 @@ char buffer[BUFFER_SIZE];
 size_t buffer_begin = 0;
 size_t buffer_end = 0;
 
+struct ShiftCommand {
+  uint32_t bits;
+  uint32_t bytes;
+  std::vector<Region> regions;
+};
+
 char tms[BUFFER_SIZE];
 char tdi[BUFFER_SIZE];
 uint8_t tdo[BUFFER_SIZE] = {};
@@ -88,6 +94,7 @@ void jtag_xvc_tick() {
     }
 
     // parse & execute commands
+    std::vector<ShiftCommand> shift_commands;
     while (true) {
       static size_t getinfo_len = strlen("getinfo:");
       static size_t settck_len = strlen("settck:");
@@ -115,7 +122,6 @@ void jtag_xvc_tick() {
       } else if (buffer_begin + shift_len + sizeof(uint32_t) <= buffer_end &&
                  memcmp(&buffer[buffer_begin], "shift:", shift_len) == 0) {
         dprintf("shift:\n");
-
         uint32_t bits = 0;
         memcpy(&bits, &buffer[buffer_begin + shift_len], sizeof(uint32_t));
 
@@ -131,7 +137,6 @@ void jtag_xvc_tick() {
                bytes);
         buffer_begin += total_len;
 
-        memset(tdo, 0, bytes);
         dprintf(" tms:");
         print_bitvec((unsigned char *)tms, bits);
         dprintf("\n");
@@ -174,28 +179,45 @@ void jtag_xvc_tick() {
               tdi_buffer[off / 8] |= tdi_bit << (off % 8);
             }
 
-            // always read
-            uint8_t tdo_buffer[BUFFER_SIZE] = {};
-            jtag_scan_chain(tdi_buffer, tdo_buffer, region.length(),
-                            region.flip_tms, true);
-
-            for (int i = region.begin; i < region.end; i++) {
-              int off = i - region.begin;
-              uint8_t tdo_bit = (tdo_buffer[off / 8] >> (off % 8)) & 0x1;
-              tdo[i / 8] |= tdo_bit << (i % 8);
-            }
+            // send here, recv later
+            jtag_scan_chain_send(tdi_buffer, region.length(), region.flip_tms,
+                                 true);
           }
         }
         assert(cur_state == state);
 
-        dprintf(" tdo:");
-        print_bitvec(tdo, bits);
-        dprintf("\n");
-        assert(swrite(client_fd, (char *)tdo, bytes) >= 0);
+        // save shift command for recv below
+        ShiftCommand shift_command;
+        shift_command.bits = bits;
+        shift_command.bytes = bytes;
+        shift_command.regions = regions;
+        shift_commands.push_back(shift_command);
       } else {
         // can not parse
         break;
       }
+    }
+
+    // read result back
+    for (auto &shift_command : shift_commands) {
+      memset(tdo, 0, shift_command.bytes);
+      for (auto region : shift_command.regions) {
+        if (!region.is_tms) {
+          uint8_t tdo_buffer[BUFFER_SIZE] = {};
+          jtag_scan_chain_recv(tdo_buffer, region.length(), region.flip_tms);
+
+          for (int i = region.begin; i < region.end; i++) {
+            int off = i - region.begin;
+            uint8_t tdo_bit = (tdo_buffer[off / 8] >> (off % 8)) & 0x1;
+            tdo[i / 8] |= tdo_bit << (i % 8);
+          }
+        }
+      }
+
+      dprintf(" tdo:");
+      print_bitvec(tdo, shift_command.bits);
+      dprintf("\n");
+      assert(write_full(client_fd, tdo, shift_command.bytes));
     }
   } else {
     try_accept();
