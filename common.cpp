@@ -164,6 +164,19 @@ void print_bitvec(const uint8_t *data, size_t bits) {
 
 bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
                      bool flip_tms, bool do_read) {
+  if (!jtag_scan_chain_send(data, num_bits, flip_tms, do_read)) {
+    return false;
+  }
+  if (do_read) {
+    if (!jtag_scan_chain_recv(recv, num_bits, flip_tms)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool jtag_scan_chain_send(const uint8_t *data, size_t num_bits, bool flip_tms,
+                          bool do_read) {
   bits_send += num_bits;
   dprintf("Write TDI%s %d bits: ", flip_tms ? "+TMS" : "", num_bits);
   print_bitvec(data, num_bits);
@@ -232,9 +245,14 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
     }
   }
 
-  // speedup if read is not required
-  if (!do_read) {
-    return true;
+  return true;
+}
+
+bool jtag_scan_chain_recv(uint8_t *recv, size_t num_bits, bool flip_tms) {
+  size_t bulk_bits = num_bits;
+  if (flip_tms) {
+    // last bit should be sent along TMS 0->1
+    bulk_bits -= 1;
   }
 
   // read bulk
