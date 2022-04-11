@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <ftdi.h>
+#include <math.h>
 #include <memory.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -102,11 +103,14 @@ void jtag_xvc_tick() {
                  memcmp(&buffer[buffer_begin], "settck:", settck_len) == 0) {
         dprintf("settck:");
 
+        // period is ns
         uint32_t tck = 0;
         memcpy(&tck, &buffer[buffer_begin + settck_len], sizeof(uint32_t));
         dprintf("%d\n", tck);
         buffer_begin += settck_len + sizeof(uint32_t);
 
+        uint64_t freq_mhz = round(1000.0 / tck);
+        mpsse_set_tck_freq(freq_mhz);
         assert(write_full(client_fd, (uint8_t *)&tck, sizeof(tck)));
       } else if (buffer_begin + shift_len + sizeof(uint32_t) <= buffer_end &&
                  memcmp(&buffer[buffer_begin], "shift:", shift_len) == 0) {

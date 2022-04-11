@@ -45,6 +45,7 @@ JtagState next_state(JtagState cur, int bit);
 const char *state_to_string(JtagState state);
 
 bool mpsse_init();
+bool mpsse_set_tck_freq(uint64_t freq_mhz);
 
 // jtag operations
 bool jtag_tms_seq(const uint8_t *data, size_t num_bits);
