@@ -48,6 +48,7 @@ void jtag_rbb_tick() {
         }
       } else if (command == 'R') {
         // read
+        // NOTE: We made assumption of when OpenOCD sends the 'R' command
         read_input[bits / 8] |= 1 << (bits % 8);
         read_bits++;
       } else if (command == 'r' || command == 's') {
@@ -83,7 +84,7 @@ void jtag_rbb_tick() {
           int off = i - region.begin;
           tms_buffer[off / 8] |= tms_bit << (off % 8);
         }
-        jtag_tms_seq(tms_buffer, region.end - region.begin);
+        jtag_tms_seq(tms_buffer, region.length());
       } else {
         uint8_t tdi_buffer[BUFFER_SIZE] = {};
         bool do_read = false;
@@ -99,20 +100,19 @@ void jtag_rbb_tick() {
         }
 
         uint8_t tdo_buffer[BUFFER_SIZE] = {};
-        jtag_scan_chain(tdi_buffer, tdo_buffer, region.end - region.begin,
+        jtag_scan_chain(tdi_buffer, tdo_buffer, region.length(),
                         region.flip_tms, do_read);
 
         // handle read
         if (do_read) {
-          actual_read_bits += region.end - region.begin;
-          for (int i = 0; i < region.end - region.begin; i++) {
+          actual_read_bits += region.length();
+          for (int i = 0; i < region.length(); i++) {
             uint8_t tdo_bit = (tdo_buffer[i / 8] >> (i % 8)) & 0x1;
 
             send_buffer[i] = tdo_bit ? '1' : '0';
           }
 
-          write_full(client_fd, (uint8_t *)send_buffer,
-                     region.end - region.begin);
+          write_full(client_fd, (uint8_t *)send_buffer, region.length());
         }
       }
     }

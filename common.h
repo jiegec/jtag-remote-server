@@ -68,6 +68,11 @@ struct Region {
   bool flip_tms;
   int begin;
   int end;
+
+  int length() const {
+    assert(begin < end);
+    return end - begin;
+  }
 };
 
 std::vector<Region> analyze_bitbang(const uint8_t *tms, size_t bits, JtagState &cur_state);

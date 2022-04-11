@@ -122,9 +122,9 @@ void jtag_xvc_tick() {
           }
           if (clock_only) {
             jtag_tms_seq(tms_buffer, 1);
-            jtag_clock_tck(region.end - region.begin - 1);
+            jtag_clock_tck(region.length() - 1);
           } else {
-            jtag_tms_seq(tms_buffer, region.end - region.begin);
+            jtag_tms_seq(tms_buffer, region.length());
           }
         } else {
           uint8_t tdi_buffer[BUFFER_SIZE] = {};
@@ -136,7 +136,7 @@ void jtag_xvc_tick() {
 
           // always read
           uint8_t tdo_buffer[BUFFER_SIZE] = {};
-          jtag_scan_chain(tdi_buffer, tdo_buffer, region.end - region.begin,
+          jtag_scan_chain(tdi_buffer, tdo_buffer, region.length(),
                           region.flip_tms, true);
 
           for (int i = region.begin; i < region.end; i++) {
