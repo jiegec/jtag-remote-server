@@ -179,10 +179,10 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
   // send whole bytes first
   size_t length_in_bytes = bulk_bits / 8;
   if (length_in_bytes) {
-    uint8_t buf[256] = {do_read_flag | MPSSE_DO_WRITE | MPSSE_LSB |
-                            MPSSE_WRITE_NEG,
-                        (uint8_t)((length_in_bytes - 1) & 0xff),
-                        (uint8_t)((length_in_bytes - 1) >> 8)};
+    uint8_t buf[256] = {
+        (uint8_t)(do_read_flag | MPSSE_DO_WRITE | MPSSE_LSB | MPSSE_WRITE_NEG),
+        (uint8_t)((length_in_bytes - 1) & 0xff),
+        (uint8_t)((length_in_bytes - 1) >> 8)};
     if (ftdi_write_data(ftdi, buf, 3) != 3) {
       printf("Error: %s\n", ftdi_get_error_string(ftdi));
       return false;
@@ -197,8 +197,8 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
   // sent rest bits
   if (bulk_bits % 8) {
     uint8_t buf[256] = {
-        do_read_flag | MPSSE_DO_WRITE | MPSSE_LSB | MPSSE_WRITE_NEG |
-            MPSSE_BITMODE,
+        (uint8_t)(do_read_flag | MPSSE_DO_WRITE | MPSSE_LSB | MPSSE_WRITE_NEG |
+                  MPSSE_BITMODE),
         // length in bits -1
         (uint8_t)((bulk_bits % 8) - 1),
         // data
@@ -218,8 +218,8 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
     state = new_state;
 
     uint8_t bit = (data[(num_bits - 1) / 8] >> ((num_bits - 1) % 8)) & 1;
-    uint8_t buf[3] = {do_read_flag | MPSSE_WRITE_TMS | MPSSE_LSB |
-                          MPSSE_BITMODE | MPSSE_WRITE_NEG,
+    uint8_t buf[3] = {(uint8_t)(do_read_flag | MPSSE_WRITE_TMS | MPSSE_LSB |
+                                MPSSE_BITMODE | MPSSE_WRITE_NEG),
                       // length in bits -1
                       0x00,
                       // data

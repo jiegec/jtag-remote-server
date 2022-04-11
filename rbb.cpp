@@ -97,6 +97,8 @@ void jtag_rbb_tick() {
           if (read_bit) {
             do_read = true;
           }
+          // verify our assumption: all read_bit remains the same
+          assert(do_read == read_bit);
         }
 
         uint8_t tdo_buffer[BUFFER_SIZE] = {};
