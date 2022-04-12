@@ -121,8 +121,6 @@ int main(int argc, char *argv[]) {
     return false;
   }
 
-  jtag_probe_devices();
-
   if (proto == Protocol::RBB) {
     printf("Use remote bitbang protocol\n");
     jtag_rbb_init();

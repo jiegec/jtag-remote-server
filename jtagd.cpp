@@ -195,20 +195,43 @@ void jtag_jtagd_tick() {
             // int: chain_tag
             // int: autoscan
 
+            // scan jtag
+            std::vector<uint32_t> devices = jtag_probe_devices();
+
             add_response(0);
             // int: chain_tag
             int chain_tag = 1;
             add_int(chain_tag);
             // int: device_count
-            int device_count = 0;
+            int device_count = devices.size();
             add_int(device_count);
             // int: fifo_len
-            int fifo_len = 0;
+            std::string device_name = "device0";
+            int fifo_len =
+                device_count * (4 + 4 + 4 + 4 + 4 + 1 + device_name.length());
             add_int(fifo_len);
             end_response();
             do_send(0);
 
             // for each device
+            for (int i = 0; i < devices.size(); i++) {
+              // int: device_id
+              int device_id = devices[i];
+              add_int(device_id);
+              // int: instruction_length
+              // TODO: find this in a database
+              int instruction_length = 10;
+              add_int(instruction_length);
+              // int: features
+              int features = 0;
+              add_int(features);
+              // 2x int: dummy
+              add_int(0);
+              add_int(0);
+              // string: device_name
+              std::string device_name = "device0";
+              add_string(device_name);
+            }
             do_send(4); // FIFO_MIN
           } else if (header->command == 0xFE) {
             // USE_PROTOCOL_VERSION
