@@ -41,9 +41,11 @@ extern JtagState state;
 extern uint64_t bits_send;
 extern uint64_t freq_mhz;
 
+// jtag state transition
 JtagState next_state(JtagState cur, int bit);
 const char *state_to_string(JtagState state);
 
+// initial mpsse interface of ftdi
 bool mpsse_init();
 bool mpsse_set_tck_freq(uint64_t freq_mhz);
 
@@ -56,7 +58,8 @@ bool jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
 bool jtag_scan_chain_recv(uint8_t *recv, size_t num_bits,
                      bool flip_tms);
 bool jtag_clock_tck(size_t times);
-bool jtag_fsm_reset();
+bool jtag_goto_tlr();
+std::vector<uint32_t> jtag_probe_devices();
 
 // debug related
 void print_bitvec(const uint8_t *data, size_t bits);

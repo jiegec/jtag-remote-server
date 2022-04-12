@@ -51,7 +51,7 @@ void jtag_vpi_tick() {
       jtag_vpi_recv = 0;
       memset(cmd->buffer_in, 0, sizeof(cmd->buffer_in));
       if (cmd->cmd == CMD_RESET) {
-        jtag_fsm_reset();
+        jtag_goto_tlr();
       } else if (cmd->cmd == CMD_TMS_SEQ) {
         jtag_tms_seq(cmd->buffer_out, cmd->nb_bits);
       } else if (cmd->cmd == CMD_SCAN_CHAIN) {

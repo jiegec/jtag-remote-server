@@ -116,7 +116,7 @@ bool mpsse_set_tck_freq(uint64_t freq_mhz) {
   return true;
 }
 
-bool jtag_fsm_reset() {
+bool jtag_goto_tlr() {
   // 11111: Goto Test-Logic-Reset
   uint8_t tms[] = {0x1F};
   return jtag_tms_seq(tms, 5);
@@ -484,4 +484,82 @@ bool read_socket() {
   }
 
   return true;
+}
+
+std::vector<uint32_t> jtag_probe_devices() {
+  // list of detected idcode
+  std::vector<uint32_t> res;
+
+  // find the number of devices in the daisy chain
+  // https://www.fpga4fun.com/JTAG3.html
+  // step 1: go to test-logic-reset
+  jtag_goto_tlr();
+
+  // step 2: go to shift-ir 01100
+  uint8_t shift_ir_tms[] = {0x06};
+  jtag_tms_seq(shift_ir_tms, 5);
+
+  // step 3: send plenty of ones into ir register
+  const int MAX_TAPS = 8;
+  const int MAX_IR = 16;
+  uint8_t ones[MAX_TAPS * MAX_IR / 8];
+  memset(ones, 0xFF, sizeof(ones));
+  jtag_scan_chain_send(ones, MAX_TAPS * MAX_IR, true, false);
+
+  // step 4: go from exit1-ir to shift-dr 1100
+  uint8_t shift_dr_tms[] = {0x03};
+  jtag_tms_seq(shift_dr_tms, 4);
+
+  // step 5: send plenty of zeros into dr register
+  uint8_t zeros[MAX_TAPS / 8];
+  memset(zeros, 0, sizeof(zeros));
+  jtag_scan_chain_send(zeros, MAX_TAPS, false, false);
+
+  // step 6: send plenty of ones again into dr register
+  uint8_t ones2[MAX_TAPS / 8];
+  memset(ones2, 0xFF, sizeof(ones2));
+  uint8_t read_buffer[MAX_TAPS / 8];
+  jtag_scan_chain(ones2, read_buffer, MAX_TAPS, true, true);
+
+  size_t num_devices = 0;
+  for (int i = 0; i < MAX_TAPS; i++) {
+    int read_bit = (read_buffer[i / 8] >> (i % 8)) & 1;
+    if (read_bit) {
+      num_devices = i;
+      break;
+    }
+  }
+
+  dprintf("Found %zu devices on the chain\n", num_devices);
+  if (num_devices == 0) {
+    return res;
+  }
+
+  // step 7: restore test logic reset
+  // now all device has ir = idcode
+  jtag_goto_tlr();
+
+  // step 8: go from test-logic-reset to shift-dr 0100
+  uint8_t shift_dr2_tms[] = {0x02};
+  jtag_tms_seq(shift_dr2_tms, 4);
+
+  // step 9: read id out
+  uint8_t zeros2[MAX_TAPS * 32 / 8];
+  memset(zeros2, 0, sizeof(zeros2));
+  uint8_t read_buffer2[MAX_TAPS * 32 / 8];
+  jtag_scan_chain(zeros2, read_buffer2, MAX_TAPS * 32, true, true);
+
+  // collect idcode
+  for (int i = 0; i < num_devices; i++) {
+    uint32_t idcode = (read_buffer2[i * 4]) | (read_buffer2[i * 4 + 1] << 8) |
+                      (read_buffer2[i * 4 + 2] << 16) |
+                      (read_buffer2[i * 4 + 3] << 24);
+    res.push_back(idcode);
+    dprintf("Device %d has IDCODE=0x%08X\n", i, idcode);
+  }
+
+  // step 7: restore test logic reset
+  jtag_goto_tlr();
+
+  return res;
 }
