@@ -145,7 +145,7 @@ void jtag_jtagd_tick() {
 
             // each payload:
             // an int: chain_id
-            int chain_id = 0;
+            int chain_id = 1; // cannot be zero
             add_int(chain_id);
             // a string: hw_name
             add_string(hw_name);
@@ -175,6 +175,41 @@ void jtag_jtagd_tick() {
             add_int(0);
             add_string(server_path);
             end_response();
+          } else if (header->command == 0xA2) {
+            // LOCK_CHAIN
+            dprintf("LOCK_CHAIN\n");
+            // success
+            add_response(0);
+            end_response();
+          } else if (header->command == 0xA3) {
+            // UNLOCK_CHAIN
+            dprintf("UNLOCK_CHAIN\n");
+            // success
+            add_response(0);
+            end_response();
+          } else if (header->command == 0xA5) {
+            // READ_CHAIN
+            dprintf("READ_CHAIN\n");
+            // args:
+            // int: chain_id
+            // int: chain_tag
+            // int: autoscan
+
+            add_response(0);
+            // int: chain_tag
+            int chain_tag = 1;
+            add_int(chain_tag);
+            // int: device_count
+            int device_count = 0;
+            add_int(device_count);
+            // int: fifo_len
+            int fifo_len = 0;
+            add_int(fifo_len);
+            end_response();
+            do_send(0);
+
+            // for each device
+            do_send(4); // FIFO_MIN
           } else if (header->command == 0xFE) {
             // USE_PROTOCOL_VERSION
             dprintf("USE_PROTOCOL_VERSION\n");
