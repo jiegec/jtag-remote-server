@@ -2,6 +2,7 @@
 #include "rbb.h"
 #include "vpi.h"
 #include "xvc.h"
+#include "jtagd.h"
 #include <assert.h>
 #include <ftdi.h>
 #include <sys/signal.h>
@@ -22,6 +23,10 @@ enum ftdi_interface ftdi_channel = INTERFACE_A;
 bool stop = false;
 uint64_t bits_send = 0;
 uint64_t freq_mhz = 15;
+
+char buffer[BUFFER_SIZE];
+size_t buffer_begin = 0;
+size_t buffer_end = 0;
 
 void sigint_handler(int sig) {
   printf("Gracefully shutdown\n");
@@ -62,7 +67,7 @@ uint64_t get_time_ns() {
   return (uint64_t)tv.tv_sec * 1000000000 + (uint64_t)tv.tv_usec * 1000;
 }
 
-enum Protocol { VPI, RBB, XVC };
+enum Protocol { VPI, RBB, XVC, JTAGD };
 
 int main(int argc, char *argv[]) {
   signal(SIGINT, sigint_handler);
@@ -70,7 +75,7 @@ int main(int argc, char *argv[]) {
   // https://man7.org/linux/man-pages/man3/getopt.3.html
   int opt;
   Protocol proto = Protocol::VPI;
-  while ((opt = getopt(argc, argv, "dvrxc:p:f:")) != -1) {
+  while ((opt = getopt(argc, argv, "dvrxjc:p:f:")) != -1) {
     switch (opt) {
     case 'd':
       debug = true;
@@ -83,6 +88,9 @@ int main(int argc, char *argv[]) {
       break;
     case 'x':
       proto = Protocol::XVC;
+      break;
+    case 'j':
+      proto = Protocol::JTAGD;
       break;
     case 'c':
       if ('A' <= optarg[0] && optarg[0] <= 'D') {
@@ -101,6 +109,7 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "\t-v: Use jtag_vpi protocol\n");
       fprintf(stderr, "\t-r: Use remote bitbang protocol\n");
       fprintf(stderr, "\t-x: Use xilinx virtual cable protocol\n");
+      fprintf(stderr, "\t-j: Use intel jtag server protocol\n");
       fprintf(stderr, "\t-c A|B|C|D: Select ftdi channel\n");
       fprintf(stderr, "\t-p PID: Specify usb pid\n");
       fprintf(stderr, "\t-f FREQ: Specify jtag clock frequency in MHz\n");
@@ -121,6 +130,9 @@ int main(int argc, char *argv[]) {
   } else if (proto == Protocol::XVC) {
     printf("Use xilinx virtual cable protocol\n");
     jtag_xvc_init();
+  } else if (proto == Protocol::JTAGD) {
+    printf("Use intel jtag server protocol\n");
+    jtag_jtagd_init();
   }
   uint64_t last_time = get_time_ns();
   uint64_t last_bits_send = 0;
@@ -128,8 +140,8 @@ int main(int argc, char *argv[]) {
     uint64_t current_time = get_time_ns();
     if (current_time - last_time > 1000000000l) {
       fprintf(stderr, "\rSpeed: %.2lf kbps",
-             (double)((bits_send - last_bits_send) * 1000000000l / 1000) /
-                 (current_time - last_time));
+              (double)((bits_send - last_bits_send) * 1000000000l / 1000) /
+                  (current_time - last_time));
       last_time = current_time;
       last_bits_send = bits_send;
     }
@@ -139,6 +151,8 @@ int main(int argc, char *argv[]) {
       jtag_vpi_tick();
     } else if (proto == Protocol::XVC) {
       jtag_xvc_tick();
+    } else if (proto == Protocol::JTAGD) {
+      jtag_jtagd_tick();
     }
   }
   fflush(stdout);

@@ -82,4 +82,12 @@ struct Region {
 
 std::vector<Region> analyze_bitbang(const uint8_t *tms, size_t bits, JtagState &cur_state);
 
+// read socket buffer
+const int BUFFER_SIZE = 4096;
+extern char buffer[BUFFER_SIZE];
+extern size_t buffer_begin;
+extern size_t buffer_end;
+
+bool read_socket();
+
 #endif

@@ -50,12 +50,6 @@ bool jtag_xvc_init() {
   return true;
 }
 
-const int BUFFER_SIZE = 4096;
-// read socket buffer
-char buffer[BUFFER_SIZE];
-size_t buffer_begin = 0;
-size_t buffer_end = 0;
-
 struct ShiftCommand {
   uint32_t bits;
   uint32_t bytes;
@@ -67,30 +61,8 @@ char tdi[BUFFER_SIZE];
 uint8_t tdo[BUFFER_SIZE] = {};
 void jtag_xvc_tick() {
   if (client_fd >= 0) {
-    if (buffer_begin > 0 && buffer_end == BUFFER_SIZE) {
-      // buffer is full, move to zero
-      memmove(buffer, &buffer[buffer_begin], buffer_end - buffer_begin);
-      buffer_end -= buffer_begin;
-      buffer_begin = 0;
-    } else if (buffer_begin == buffer_end) {
-      // buffer is empty
-      buffer_begin = 0;
-      buffer_end = 0;
-    }
-
-    if (buffer_end < BUFFER_SIZE) {
-      // buffer is not full, read something
-      ssize_t num_read =
-          read(client_fd, &buffer[buffer_begin], BUFFER_SIZE - buffer_end);
-      if (num_read == 0) {
-        // remote socket closed
-        printf("JTAG debugger detached\n");
-        close(client_fd);
-        client_fd = -1;
-        return;
-      } else if (num_read > 0) {
-        buffer_end += num_read;
-      }
+    if (!read_socket()) {
+      return;
     }
 
     // parse & execute commands

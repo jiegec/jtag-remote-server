@@ -9,8 +9,6 @@ bool jtag_rbb_init() {
   return true;
 }
 
-const int BUFFER_SIZE = 4096;
-
 void jtag_rbb_tick() {
   if (client_fd >= 0) {
     char tms_input[BUFFER_SIZE];

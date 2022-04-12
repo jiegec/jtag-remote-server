@@ -453,3 +453,35 @@ std::vector<Region> analyze_bitbang(const uint8_t *tms, size_t bits,
   }
   return regions;
 }
+
+bool read_socket() {
+  if (buffer_begin > 0 && buffer_end == BUFFER_SIZE) {
+    // buffer is full, move to zero
+    memmove(buffer, &buffer[buffer_begin], buffer_end - buffer_begin);
+    buffer_end -= buffer_begin;
+    buffer_begin = 0;
+  } else if (buffer_begin == buffer_end) {
+    // buffer is empty
+    buffer_begin = 0;
+    buffer_end = 0;
+  }
+
+  if (buffer_end < BUFFER_SIZE) {
+    // buffer is not full, read something
+    ssize_t num_read =
+        read(client_fd, &buffer[buffer_begin], BUFFER_SIZE - buffer_end);
+    if (num_read == 0) {
+      // remote socket closed
+      printf("JTAG debugger detached\n");
+      close(client_fd);
+      client_fd = -1;
+      buffer_begin = 0;
+      buffer_end = 0;
+      return false;
+    } else if (num_read > 0) {
+      buffer_end += num_read;
+    }
+  }
+
+  return true;
+}
