@@ -38,6 +38,12 @@ void add_int(uint32_t value) {
   send_buffer_size += sizeof(uint32_t);
 }
 
+void add_array(uint8_t *data, size_t len) {
+  assert(send_buffer_size + len <= BUFFER_SIZE);
+  memcpy(&send_buffer[send_buffer_size], data, len);
+  send_buffer_size += len;
+}
+
 int last_response = -1;
 
 // jtag_message.h RXMESSAGE::remove_response
@@ -95,6 +101,9 @@ struct MessageHeader {
   uint8_t zero;
   uint16_t be_len; // big endian
 };
+
+// saved device list
+std::vector<uint32_t> devices;
 
 void jtag_jtagd_tick() {
   // leave space for header
@@ -210,7 +219,7 @@ void jtag_jtagd_tick() {
             // int: autoscan
 
             // scan jtag
-            std::vector<uint32_t> devices = jtag_probe_devices();
+            devices = jtag_probe_devices();
 
             add_response(0);
             // int: chain_tag
@@ -231,8 +240,7 @@ void jtag_jtagd_tick() {
             for (int i = 0; i < devices.size(); i++) {
               // int: device_id
               int device_id = devices[i];
-              // add_int(device_id);
-              add_int(0x020F10DD);
+              add_int(device_id);
               // int: instruction_length
               // TODO: find this in a database
               int instruction_length = 10;
@@ -248,6 +256,15 @@ void jtag_jtagd_tick() {
               add_string(device_name);
             }
             do_send(4); // FIFO_MIN
+          } else if (header->command == 0xA8) {
+            // OPEN_DEVICE
+            dprintf("OPEN_DEVICE\n");
+            add_response(0);
+            // int: idcode
+            // TODO: index from tap_position
+            int id = devices[0];
+            add_int(id);
+            end_response();
           } else if (header->command == 0xAA) {
             // SET_PARAMETER
             dprintf("SET_PARAMETER\n");
@@ -258,6 +275,95 @@ void jtag_jtagd_tick() {
             dprintf("GET_PARAMETER\n");
             add_response(0);
             add_int(0);
+            end_response();
+          } else if (header->command == 0xC0) {
+            // CLOSE_DEVICE
+            dprintf("CLOSE_DEVICE\n");
+            // success
+            add_response(0);
+            end_response();
+          } else if (header->command == 0xC1) {
+            // LOCK_DEVICE
+            dprintf("LOCK_DEVICE\n");
+            // success
+            add_response(0);
+            end_response();
+          } else if (header->command == 0xC2) {
+            // UNLOCK_DEVICE
+            dprintf("UNLOCK_DEVICE\n");
+            // success
+            add_response(0);
+            end_response();
+          } else if (header->command == 0xC6) {
+            // it does not appear in libaji_client
+            // but it is adjacent to ACCESS_IR
+            // ACCESS_IR_2
+            dprintf("ACCESS_IR_2\n");
+
+            // guessed input:
+            // int: ?
+            // int: 1
+            // int: idcode
+            // int: instruction
+            uint8_t instruction[4] = {};
+            // reverse endian
+            instruction[0] = p[19];
+            instruction[1] = p[18];
+            instruction[2] = p[17];
+            instruction[3] = p[16];
+            uint8_t read_back[4] = {};
+
+            // TODO: do not hardcode irlen
+            int ir_len = 10;
+            jtag_tms_seq_to(JtagState::ShiftIR);
+            jtag_scan_chain(instruction, read_back, ir_len, true, true);
+
+            // success
+            add_response(0);
+            uint32_t res = read_back[0];
+            memcpy(&res, read_back, sizeof(read_back));
+            add_int(res);
+            end_response();
+          } else if (header->command == 0xC8) {
+            // it does not appear in libaji_client
+            // but it is adjacent to ACCESS_DR
+            // ACCESS_DR_2
+            dprintf("ACCESS_DR_2\n");
+
+            // guessed input:
+            // int: 1
+            // int: ?
+            // int: idcode
+            // int: length_dr
+            // int: write_offset
+            // int: write_length
+            // int: read_offset
+            // int: read_length
+            uint32_t length_dr;
+            memcpy(&length_dr, &p[16], 4);
+            length_dr = ntohl(length_dr);
+            uint8_t send[BUFFER_SIZE] = {};
+            uint8_t recv[BUFFER_SIZE] = {};
+
+            jtag_tms_seq_to(JtagState::ShiftDR);
+            jtag_scan_chain(send, recv, length_dr, true, true);
+
+            // success
+            add_response(0);
+            end_response();
+            do_send(0);
+
+            size_t num_bytes = (length_dr + 7) / 8;
+
+            // send data via fifo
+            add_array(recv, num_bytes);
+            do_send(4); // FIFO_MIN
+          } else if (header->command == 0xCA) {
+            // RUN_TEST_IDLE
+            dprintf("RUN_TEST_IDLE\n");
+            jtag_tms_seq_to(JtagState::RunTestIdle);
+
+            add_response(0);
             end_response();
           } else if (header->command == 0xFE) {
             // USE_PROTOCOL_VERSION

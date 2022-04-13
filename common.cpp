@@ -496,8 +496,7 @@ std::vector<uint32_t> jtag_probe_devices() {
   jtag_goto_tlr();
 
   // step 2: go to shift-ir 01100
-  uint8_t shift_ir_tms[] = {0x06};
-  jtag_tms_seq(shift_ir_tms, 5);
+  jtag_tms_seq_to(JtagState::ShiftIR);
 
   // step 3: send plenty of ones into ir register
   const int MAX_TAPS = 8;
@@ -507,8 +506,7 @@ std::vector<uint32_t> jtag_probe_devices() {
   jtag_scan_chain_send(ones, MAX_TAPS * MAX_IR, true, false);
 
   // step 4: go from exit1-ir to shift-dr 1100
-  uint8_t shift_dr_tms[] = {0x03};
-  jtag_tms_seq(shift_dr_tms, 4);
+  jtag_tms_seq_to(JtagState::ShiftDR);
 
   // step 5: send plenty of zeros into dr register
   uint8_t zeros[MAX_TAPS / 8];
@@ -562,4 +560,71 @@ std::vector<uint32_t> jtag_probe_devices() {
   jtag_goto_tlr();
 
   return res;
+}
+
+void jtag_get_tms_seq(JtagState from, JtagState to, uint8_t &tms,
+                      size_t &num_bits) {
+  if (from == to) {
+    tms = 0;
+    num_bits = 0;
+    return;
+  }
+
+  if (from == JtagState::TestLogicReset) {
+    if (to == JtagState::ShiftIR) {
+      // go to shift-ir 01100
+      tms = 0x06;
+      num_bits = 5;
+      return;
+    } else if (to == JtagState::ShiftDR) {
+      // go to shift-dr 0100
+      tms = 0x02;
+      num_bits = 4;
+      return;
+    }
+  } else if (from == JtagState::RunTestIdle) {
+    if (to == JtagState::ShiftIR) {
+      // go to shift-ir 1100
+      tms = 0x3;
+      num_bits = 4;
+      return;
+    } else if (to == JtagState::ShiftDR) {
+      // go to shift-dr 100
+      tms = 0x1;
+      num_bits = 3;
+      return;
+    }
+  } else if (from == JtagState::Exit1IR) {
+    if (to == JtagState::ShiftDR) {
+      // from exit1-ir to shift-dr 1100
+      tms = 0x3;
+      num_bits = 4;
+      return;
+    } else if (to == JtagState::RunTestIdle) {
+      // from exit1-ir to run-test-idle 10
+      tms = 0x1;
+      num_bits = 2;
+      return;
+    }
+  } else if (from == JtagState::Exit1DR) {
+    if (to == JtagState::RunTestIdle) {
+      // from exit1-dr to run-test-idle 10
+      tms = 0x1;
+      num_bits = 2;
+      return;
+    }
+  }
+  assert(false);
+  return;
+}
+
+bool jtag_tms_seq_to(JtagState to) {
+  uint8_t tms;
+  size_t num_bits;
+  jtag_get_tms_seq(state, to, tms, num_bits);
+  if (num_bits > 0) {
+    return jtag_tms_seq(&tms, num_bits);
+  } else {
+    return true;
+  }
 }

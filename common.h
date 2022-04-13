@@ -53,12 +53,13 @@ bool mpsse_set_tck_freq(uint64_t freq_mhz);
 bool jtag_tms_seq(const uint8_t *data, size_t num_bits);
 bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
                      bool flip_tms, bool do_read);
-bool jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
-                     bool flip_tms, bool do_read);
-bool jtag_scan_chain_recv(uint8_t *recv, size_t num_bits,
-                     bool flip_tms);
+bool jtag_scan_chain_send(const uint8_t *data, size_t num_bits, bool flip_tms,
+                          bool do_read);
+bool jtag_scan_chain_recv(uint8_t *recv, size_t num_bits, bool flip_tms);
 bool jtag_clock_tck(size_t times);
 bool jtag_goto_tlr();
+void jtag_get_tms_seq(JtagState from, JtagState to, uint8_t &tms, size_t &num_bits);
+bool jtag_tms_seq_to(JtagState to);
 std::vector<uint32_t> jtag_probe_devices();
 
 // debug related
@@ -83,7 +84,8 @@ struct Region {
   }
 };
 
-std::vector<Region> analyze_bitbang(const uint8_t *tms, size_t bits, JtagState &cur_state);
+std::vector<Region> analyze_bitbang(const uint8_t *tms, size_t bits,
+                                    JtagState &cur_state);
 
 // read socket buffer
 const int BUFFER_SIZE = 4096;
