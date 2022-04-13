@@ -108,7 +108,7 @@ void jtag_jtagd_tick() {
     while (buffer_begin + 2 <= buffer_end) {
       // jtag_tcplink.cpp TCPLINK:add_packet
       uint16_t header =
-          ((uint16_t)buffer[buffer_begin] << 8) + buffer[buffer_begin + 1];
+          (((uint16_t)buffer[buffer_begin]) << 8) + buffer[buffer_begin + 1];
       uint16_t mux = header >> 12;
       uint16_t length = (header & ((1 << 12) - 1)) + 1;
       if (buffer_begin + 2 + length <= buffer_end) {
@@ -157,7 +157,7 @@ void jtag_jtagd_tick() {
             // a string: device_name
             add_string(device_name);
             // an int: features
-            int features = 1; // AJI_FEATURE_DUMMY
+            int features = 0x0800; // AJI_FEATURE_JTAG
             add_int(features);
 
             do_send(4); // FIFO_MIN
@@ -174,6 +174,20 @@ void jtag_jtagd_tick() {
             add_string(version_info);
             add_int(0);
             add_string(server_path);
+            end_response();
+          } else if (header->command == 0x84) {
+            // GET_DEFINED_DEVICES
+            dprintf("GET_DEFINED_DEVICES\n");
+            add_response(0);
+            // int: defined_tag
+            int defined_tag = 1;
+            add_int(defined_tag);
+            // int: device_count
+            int device_count = 0;
+            add_int(device_count);
+            // int: fifo_len
+            int fifo_len = 0;
+            add_int(fifo_len);
             end_response();
           } else if (header->command == 0xA2) {
             // LOCK_CHAIN
@@ -217,7 +231,8 @@ void jtag_jtagd_tick() {
             for (int i = 0; i < devices.size(); i++) {
               // int: device_id
               int device_id = devices[i];
-              add_int(device_id);
+              // add_int(device_id);
+              add_int(0x020F10DD);
               // int: instruction_length
               // TODO: find this in a database
               int instruction_length = 10;
@@ -233,12 +248,23 @@ void jtag_jtagd_tick() {
               add_string(device_name);
             }
             do_send(4); // FIFO_MIN
+          } else if (header->command == 0xAA) {
+            // SET_PARAMETER
+            dprintf("SET_PARAMETER\n");
+            add_response(0);
+            end_response();
+          } else if (header->command == 0xAB) {
+            // GET_PARAMETER
+            dprintf("GET_PARAMETER\n");
+            add_response(0);
+            add_int(0);
+            end_response();
           } else if (header->command == 0xFE) {
             // USE_PROTOCOL_VERSION
             dprintf("USE_PROTOCOL_VERSION\n");
             // the argument is version
             // response: flags
-            int flags = 0;
+            int flags = 1; // SERVER_ALLOW_REMOTE
             // 8: 4 header, 1 int
             add_response(0);
             add_int(flags);
@@ -258,6 +284,8 @@ void jtag_jtagd_tick() {
         }
 
         buffer_begin += length;
+      } else {
+        break;
       }
     }
 

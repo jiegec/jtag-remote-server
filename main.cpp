@@ -24,7 +24,7 @@ bool stop = false;
 uint64_t bits_send = 0;
 uint64_t freq_mhz = 15;
 
-char buffer[BUFFER_SIZE];
+uint8_t buffer[BUFFER_SIZE];
 size_t buffer_begin = 0;
 size_t buffer_end = 0;
 

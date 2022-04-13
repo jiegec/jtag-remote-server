@@ -87,7 +87,7 @@ std::vector<Region> analyze_bitbang(const uint8_t *tms, size_t bits, JtagState &
 
 // read socket buffer
 const int BUFFER_SIZE = 4096;
-extern char buffer[BUFFER_SIZE];
+extern uint8_t buffer[BUFFER_SIZE];
 extern size_t buffer_begin;
 extern size_t buffer_end;
 
