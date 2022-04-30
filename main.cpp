@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
       sscanf(optarg, "%x", &ftdi_pid);
       break;
     case 'f':
-      sscanf(optarg, "%d", &freq_mhz);
+      sscanf(optarg, "%lld", &freq_mhz);
       break;
     default: /* '?' */
       fprintf(stderr, "Usage: %s [-d] [-v|-r] [-p pid] [-f freq]\n", argv[0]);
@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (!ftdi_init()) {
-    return false;
+    return 1;
   }
 
   if (proto == Protocol::RBB) {

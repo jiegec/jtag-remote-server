@@ -20,6 +20,16 @@ Supported protocols:
 
 Some example OpenOCD configs are provided under `examples` directory.
 
+## Example usage
+
+For example, you use MacBook and Arty A7 for FPGA development, you can:
+
+1. Run this tool: `./jtag-remote-server -p 6010 -x`
+2. Use ssh to forward local port to Linux server: `ssh -R 2542:127.0.0.1:2542 server`
+3. Add Xilinx Virtual Cable in Xilinx: 127.0.0.1:2542
+
+Then you can find `xc7a35t` device in Xilinx and you can debug remotely.
+
 ## Performance
 
 Some testing reveals that this tool can run at 14Mbps(rbb mode)/4Mbps(jtag_vpi mode)/3Mbps(xvc mode) when programming bitstream to FPGA. The speed of 14Mbps is mainly limited by the 15MHz jtag clock and could be improved by using a faster clock if the jtag tap can work under 30MHz(maximum clock frequency is 60MHz / 2). As per DS893, maximum TCK frequency of Xilinx Virtex Ultrascale devices is 20MHz(SLR-based) or 50MHz(others).

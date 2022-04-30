@@ -105,7 +105,7 @@ bool mpsse_set_tck_freq(uint64_t freq_mhz) {
   // when "divide by 5" is disabled, base clock is 60MHz
   int divisor = (60 / 2 + freq_mhz - 1) / freq_mhz - 1;
   int actual_freq = 60 / ((1 + divisor) * 2);
-  printf("Requested jtag tck: %d MHz\n", freq_mhz);
+  printf("Requested jtag tck: %lld MHz\n", freq_mhz);
   printf("Actual jtag tck: %d MHz\n", actual_freq);
   uint8_t setup[256] = {TCK_DIVISOR, (uint8_t)divisor, 0x00, DIS_DIV_5};
   if (ftdi_write_data(ftdi, setup, 4) != 4) {
