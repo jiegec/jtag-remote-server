@@ -24,7 +24,7 @@ Some example OpenOCD configs are provided under `examples` directory.
 
 For example, you use MacBook and Arty A7 for FPGA development, you can:
 
-1. Run this tool: `./jtag-remote-server -p 6010 -x`
+1. Run this tool with xvc interface (ftdi chip here has pid=0x6010): `./jtag-remote-server -p 6010 -x`
 2. Use ssh to forward local port to Linux server: `ssh -R 2542:127.0.0.1:2542 server`
 3. Add Xilinx Virtual Cable in Xilinx: 127.0.0.1:2542
 

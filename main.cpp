@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
   // https://man7.org/linux/man-pages/man3/getopt.3.html
   int opt;
   Protocol proto = Protocol::VPI;
-  while ((opt = getopt(argc, argv, "dvrxjc:p:f:")) != -1) {
+  while ((opt = getopt(argc, argv, "dvrxjc:V:p:f:")) != -1) {
     switch (opt) {
     case 'd':
       debug = true;
@@ -97,6 +97,9 @@ int main(int argc, char *argv[]) {
         ftdi_channel = (ftdi_interface)(optarg[0] - 'A' + 1);
       }
       break;
+    case 'V':
+      sscanf(optarg, "%x", &ftdi_vid);
+      break;
     case 'p':
       sscanf(optarg, "%x", &ftdi_pid);
       break;
@@ -104,13 +107,14 @@ int main(int argc, char *argv[]) {
       sscanf(optarg, "%lld", &freq_mhz);
       break;
     default: /* '?' */
-      fprintf(stderr, "Usage: %s [-d] [-v|-r] [-p pid] [-f freq]\n", argv[0]);
+      fprintf(stderr, "Usage: %s [-d] [-v|-r] [-V vid] [-p pid] [-f freq]\n", argv[0]);
       fprintf(stderr, "\t-d: Enable debug messages\n");
       fprintf(stderr, "\t-v: Use jtag_vpi protocol\n");
       fprintf(stderr, "\t-r: Use remote bitbang protocol\n");
       fprintf(stderr, "\t-x: Use xilinx virtual cable protocol\n");
       fprintf(stderr, "\t-j: Use intel jtag server protocol\n");
       fprintf(stderr, "\t-c A|B|C|D: Select ftdi channel\n");
+      fprintf(stderr, "\t-V VID: Specify usb vid\n");
       fprintf(stderr, "\t-p PID: Specify usb pid\n");
       fprintf(stderr, "\t-f FREQ: Specify jtag clock frequency in MHz\n");
       return 1;
