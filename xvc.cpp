@@ -1,4 +1,5 @@
 #include "common.h"
+#include "mpsse.h"
 #include <algorithm>
 #include <assert.h>
 #include <fcntl.h>

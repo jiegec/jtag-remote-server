@@ -45,10 +45,6 @@ extern uint64_t freq_mhz;
 JtagState next_state(JtagState cur, int bit);
 const char *state_to_string(JtagState state);
 
-// initial mpsse interface of ftdi
-bool mpsse_init();
-bool mpsse_set_tck_freq(uint64_t freq_mhz);
-
 // jtag operations
 bool jtag_tms_seq(const uint8_t *data, size_t num_bits);
 bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,

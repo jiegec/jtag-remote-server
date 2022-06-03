@@ -1,14 +1,15 @@
 #include "common.h"
+#include "jtagd.h"
+#include "mpsse.h"
 #include "rbb.h"
 #include "vpi.h"
 #include "xvc.h"
-#include "jtagd.h"
 #include <assert.h>
 #include <ftdi.h>
+#include <inttypes.h>
 #include <sys/signal.h>
 #include <time.h>
 #include <unistd.h>
-#include <inttypes.h>
 
 struct ftdi_context *ftdi;
 int client_fd = -1;
@@ -108,7 +109,8 @@ int main(int argc, char *argv[]) {
       sscanf(optarg, "%" SCNu64, &freq_mhz);
       break;
     default: /* '?' */
-      fprintf(stderr, "Usage: %s [-d] [-v|-r] [-V vid] [-p pid] [-f freq]\n", argv[0]);
+      fprintf(stderr, "Usage: %s [-d] [-v|-r] [-V vid] [-p pid] [-f freq]\n",
+              argv[0]);
       fprintf(stderr, "\t-d: Enable debug messages\n");
       fprintf(stderr, "\t-v: Use jtag_vpi protocol\n");
       fprintf(stderr, "\t-r: Use remote bitbang protocol\n");
