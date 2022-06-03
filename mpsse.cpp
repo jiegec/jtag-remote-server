@@ -3,7 +3,37 @@
 #include <algorithm>
 #include <ftdi.h>
 
+struct ftdi_context *ftdi;
+int ftdi_vid = 0x0403;
+int ftdi_pid = 0x6011;
+enum ftdi_interface ftdi_channel = INTERFACE_A;
+
 bool mpsse_init() {
+  printf("Initialize ftdi\n");
+  ftdi = ftdi_new();
+  assert(ftdi);
+
+  printf("Use channel %c\n", (int)ftdi_channel - 1 + 'A');
+  int ret = ftdi_set_interface(ftdi, ftdi_channel);
+  if (ret) {
+    printf("Error: %s\n", ftdi_get_error_string(ftdi));
+    return false;
+  }
+
+  printf("Open device vid=0x%04x pid=0x%04x\n", ftdi_vid, ftdi_pid);
+  ret = ftdi_usb_open(ftdi, ftdi_vid, ftdi_pid);
+  if (ret) {
+    printf("Error: %s\n", ftdi_get_error_string(ftdi));
+    return false;
+  }
+
+  ret = ftdi_usb_reset(ftdi);
+  assert(ret == 0);
+  ret = ftdi_set_baudrate(ftdi, 115200);
+  assert(ret == 0);
+  ret = ftdi_set_latency_timer(ftdi, 1); // reduce latency
+  assert(ret == 0);
+
   // reset mpsse and enable
   ftdi_set_bitmode(ftdi, 0, 0);
   ftdi_set_bitmode(ftdi, 0, BITMODE_MPSSE);
@@ -19,6 +49,11 @@ bool mpsse_init() {
     return false;
   }
 
+  return true;
+}
+
+bool mpsse_deinit() {
+  ftdi_set_bitmode(ftdi, 0, 0);
   return true;
 }
 
@@ -42,8 +77,8 @@ bool mpsse_jtag_tms_seq(const uint8_t *data, size_t num_bits) {
   return true;
 }
 
-bool mpsse_jtag_scan_chain_send(const uint8_t *data, size_t num_bits, bool flip_tms,
-                          bool do_read) {
+bool mpsse_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
+                                bool flip_tms, bool do_read) {
   size_t bulk_bits = num_bits;
   if (flip_tms) {
     // last bit should be sent along TMS 0->1

@@ -3,9 +3,16 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <ftdi.h>
 
-// initial mpsse interface of ftdi
+// default: FD4232H
+extern int ftdi_vid;
+extern int ftdi_pid;
+extern enum ftdi_interface ftdi_channel;
+
+// initialize mpsse interface of ftdi
 bool mpsse_init();
+bool mpsse_deinit();
 bool mpsse_set_tck_freq(uint64_t freq_mhz);
 
 // jtag functions

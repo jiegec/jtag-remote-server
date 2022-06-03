@@ -1,4 +1,6 @@
 #include "common.h"
+#include "mpsse.h"
+
 enum JtagVpiCommand {
   CMD_RESET,
   CMD_TMS_SEQ,
@@ -43,7 +45,7 @@ void jtag_vpi_tick() {
       client_fd = -1;
 
       // reset mpsse
-      ftdi_set_bitmode(ftdi, 0, 0);
+      mpsse_deinit();
     }
 
     if (jtag_vpi_recv == sizeof(struct jtag_vpi_cmd)) {

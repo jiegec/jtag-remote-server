@@ -5,7 +5,6 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <fcntl.h>
-#include <ftdi.h>
 #include <netinet/tcp.h>
 #include <stdio.h>
 #include <string.h>
@@ -13,7 +12,6 @@
 #include <unistd.h>
 #include <vector>
 
-extern struct ftdi_context *ftdi;
 extern int listen_fd;
 extern int client_fd;
 extern bool debug;

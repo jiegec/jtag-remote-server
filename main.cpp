@@ -5,22 +5,15 @@
 #include "vpi.h"
 #include "xvc.h"
 #include <assert.h>
-#include <ftdi.h>
 #include <inttypes.h>
 #include <sys/signal.h>
 #include <time.h>
 #include <unistd.h>
 
-struct ftdi_context *ftdi;
 int client_fd = -1;
 int listen_fd = -1;
 JtagState state = TestLogicReset;
 bool debug = false;
-
-// default: FD4232H
-int ftdi_vid = 0x0403;
-int ftdi_pid = 0x6011;
-enum ftdi_interface ftdi_channel = INTERFACE_A;
 
 bool stop = false;
 uint64_t bits_send = 0;
@@ -33,34 +26,6 @@ size_t buffer_end = 0;
 void sigint_handler(int sig) {
   printf("Gracefully shutdown\n");
   stop = true;
-}
-
-bool ftdi_init() {
-  printf("Initialize ftdi\n");
-  ftdi = ftdi_new();
-  assert(ftdi);
-
-  printf("Use channel %c\n", (int)ftdi_channel - 1 + 'A');
-  int ret = ftdi_set_interface(ftdi, ftdi_channel);
-  if (ret) {
-    printf("Error: %s\n", ftdi_get_error_string(ftdi));
-    return false;
-  }
-
-  printf("Open device vid=0x%04x pid=0x%04x\n", ftdi_vid, ftdi_pid);
-  ret = ftdi_usb_open(ftdi, ftdi_vid, ftdi_pid);
-  if (ret) {
-    printf("Error: %s\n", ftdi_get_error_string(ftdi));
-    return false;
-  }
-
-  ret = ftdi_usb_reset(ftdi);
-  assert(ret == 0);
-  ret = ftdi_set_baudrate(ftdi, 115200);
-  assert(ret == 0);
-  ret = ftdi_set_latency_timer(ftdi, 1); // reduce latency
-  assert(ret == 0);
-  return mpsse_init();
 }
 
 uint64_t get_time_ns() {
@@ -124,7 +89,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (!ftdi_init()) {
+  if (!mpsse_init()) {
     return 1;
   }
 
