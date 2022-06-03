@@ -9,3 +9,5 @@ set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address ${CMAKE_CXX_FLAGS_DEBUG}")
 add_executable(jtag-remote-server main.cpp xvc.cpp rbb.cpp common.cpp vpi.cpp jtagd.cpp)
 target_link_libraries(jtag-remote-server ${FTDI_LDFLAGS})
 target_include_directories(jtag-remote-server PUBLIC ${FTDI_INCLUDE_DIRS})
+
+install(TARGETS jtag-remote-server)
