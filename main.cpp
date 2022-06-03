@@ -1,6 +1,5 @@
 #include "common.h"
 #include "jtagd.h"
-#include "mpsse.h"
 #include "rbb.h"
 #include "vpi.h"
 #include "xvc.h"
@@ -15,6 +14,9 @@ int listen_fd = -1;
 JtagState state = TestLogicReset;
 bool debug = false;
 
+int ftdi_vid = 0x0403;
+int ftdi_pid = 0x6011;
+enum ftdi_interface ftdi_channel = INTERFACE_A;
 bool stop = false;
 uint64_t bits_send = 0;
 uint64_t freq_mhz = 15;
@@ -89,7 +91,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (!mpsse_init()) {
+  if (!adapter_init()) {
     return 1;
   }
 

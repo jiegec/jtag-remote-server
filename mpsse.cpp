@@ -4,9 +4,6 @@
 #include <ftdi.h>
 
 struct ftdi_context *ftdi;
-int ftdi_vid = 0x0403;
-int ftdi_pid = 0x6011;
-enum ftdi_interface ftdi_channel = INTERFACE_A;
 
 bool mpsse_init() {
   printf("Initialize ftdi\n");

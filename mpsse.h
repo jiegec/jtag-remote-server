@@ -3,12 +3,6 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <ftdi.h>
-
-// default: FD4232H
-extern int ftdi_vid;
-extern int ftdi_pid;
-extern enum ftdi_interface ftdi_channel;
 
 // initialize mpsse interface of ftdi
 bool mpsse_init();

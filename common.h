@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <fcntl.h>
+#include <ftdi.h>
 #include <netinet/tcp.h>
 #include <stdio.h>
 #include <string.h>
@@ -39,9 +40,19 @@ extern JtagState state;
 extern uint64_t bits_send;
 extern uint64_t freq_mhz;
 
+// default: FD4232H
+extern int ftdi_vid;
+extern int ftdi_pid;
+extern enum ftdi_interface ftdi_channel;
+
 // jtag state transition
 JtagState next_state(JtagState cur, int bit);
 const char *state_to_string(JtagState state);
+
+// adapter operations
+bool adapter_init();
+bool adapter_deinit();
+bool adapter_set_tck_freq(uint64_t freq_mhz);
 
 // jtag operations
 bool jtag_tms_seq(const uint8_t *data, size_t num_bits);
@@ -52,7 +63,8 @@ bool jtag_scan_chain_send(const uint8_t *data, size_t num_bits, bool flip_tms,
 bool jtag_scan_chain_recv(uint8_t *recv, size_t num_bits, bool flip_tms);
 bool jtag_clock_tck(size_t times);
 bool jtag_goto_tlr();
-void jtag_get_tms_seq(JtagState from, JtagState to, uint8_t &tms, size_t &num_bits);
+void jtag_get_tms_seq(JtagState from, JtagState to, uint8_t &tms,
+                      size_t &num_bits);
 bool jtag_tms_seq_to(JtagState to);
 std::vector<uint32_t> jtag_probe_devices();
 

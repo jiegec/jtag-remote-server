@@ -1,5 +1,4 @@
 #include "common.h"
-#include "mpsse.h"
 
 enum JtagVpiCommand {
   CMD_RESET,
@@ -44,8 +43,8 @@ void jtag_vpi_tick() {
       close(client_fd);
       client_fd = -1;
 
-      // reset mpsse
-      mpsse_deinit();
+      // reset adapter
+      adapter_deinit();
     }
 
     if (jtag_vpi_recv == sizeof(struct jtag_vpi_cmd)) {

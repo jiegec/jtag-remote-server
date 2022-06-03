@@ -452,3 +452,15 @@ bool jtag_tms_seq_to(JtagState to) {
     return true;
   }
 }
+
+bool adapter_init() {
+  return mpsse_init();
+}
+
+bool adapter_deinit() {
+  return mpsse_deinit();
+}
+
+bool adapter_set_tck_freq(uint64_t freq_mhz) { 
+  return mpsse_set_tck_freq(freq_mhz);
+}
