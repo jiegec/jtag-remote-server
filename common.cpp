@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <stdarg.h>
 
+driver *adapter = &mpsse_driver;
+
 JtagState next_state(JtagState cur, int bit) {
   switch (cur) {
   case TestLogicReset:
@@ -105,7 +107,7 @@ bool jtag_tms_seq(const uint8_t *data, size_t num_bits) {
           state_to_string(new_state));
   state = new_state;
 
-  return mpsse_jtag_tms_seq(data, num_bits);
+  return adapter->jtag_tms_seq(data, num_bits);
 }
 
 void print_bitvec(const uint8_t *data, size_t bits) {
@@ -146,11 +148,11 @@ bool jtag_scan_chain_send(const uint8_t *data, size_t num_bits, bool flip_tms,
   print_bitvec(data, num_bits);
   dprintf("\n");
 
-  return mpsse_jtag_scan_chain_send(data, num_bits, flip_tms, do_read);
+  return adapter->jtag_scan_chain_send(data, num_bits, flip_tms, do_read);
 }
 
 bool jtag_scan_chain_recv(uint8_t *recv, size_t num_bits, bool flip_tms) {
-  return mpsse_jtag_scan_chain_recv(recv, num_bits, flip_tms);
+  return adapter->jtag_scan_chain_recv(recv, num_bits, flip_tms);
 }
 
 bool write_full(int fd, const uint8_t *data, size_t count) {
@@ -232,7 +234,7 @@ bool try_accept() {
 
 bool jtag_clock_tck(size_t times) {
   bits_send += times;
-  return mpsse_jtag_clock_tck(times);
+  return adapter->jtag_clock_tck(times);
 }
 
 std::vector<Region> analyze_bitbang(const uint8_t *tms, size_t bits,
@@ -453,14 +455,10 @@ bool jtag_tms_seq_to(JtagState to) {
   }
 }
 
-bool adapter_init() {
-  return mpsse_init();
-}
+bool adapter_init() { return adapter->init(); }
 
-bool adapter_deinit() {
-  return mpsse_deinit();
-}
+bool adapter_deinit() { return adapter->deinit(); }
 
-bool adapter_set_tck_freq(uint64_t freq_mhz) { 
-  return mpsse_set_tck_freq(freq_mhz);
+bool adapter_set_tck_freq(uint64_t freq_mhz) {
+  return adapter->set_tck_freq(freq_mhz);
 }

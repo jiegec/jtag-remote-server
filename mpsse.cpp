@@ -229,3 +229,13 @@ bool mpsse_jtag_clock_tck(size_t times) {
   }
   return true;
 }
+
+driver mpsse_driver = {
+    .init = mpsse_init,
+    .deinit = mpsse_deinit,
+    .set_tck_freq = mpsse_set_tck_freq,
+    .jtag_tms_seq = mpsse_jtag_tms_seq,
+    .jtag_scan_chain_send = mpsse_jtag_scan_chain_send,
+    .jtag_scan_chain_recv = mpsse_jtag_scan_chain_recv,
+    .jtag_clock_tck = mpsse_jtag_clock_tck,
+};

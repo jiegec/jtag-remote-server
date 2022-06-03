@@ -49,6 +49,21 @@ extern enum ftdi_interface ftdi_channel;
 JtagState next_state(JtagState cur, int bit);
 const char *state_to_string(JtagState state);
 
+// functions for adapter driver
+struct driver {
+  bool (*init)();
+  bool (*deinit)();
+  bool (*set_tck_freq)(uint64_t freq_mhz);
+
+  bool (*jtag_tms_seq)(const uint8_t *data, size_t num_bits);
+  bool (*jtag_scan_chain_send)(const uint8_t *data, size_t num_bits,
+                               bool flip_tms, bool do_read);
+  bool (*jtag_scan_chain_recv)(uint8_t *recv, size_t num_bits, bool flip_tms);
+  bool (*jtag_clock_tck)(size_t times);
+};
+
+extern driver *adapter;
+
 // adapter operations
 bool adapter_init();
 bool adapter_deinit();
