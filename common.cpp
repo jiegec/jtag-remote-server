@@ -78,6 +78,7 @@ const char *state_to_string(JtagState state) {
     return "UpdateIR";
   default:
     assert(false);
+    return "";
   }
 }
 

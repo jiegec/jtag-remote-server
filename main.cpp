@@ -8,6 +8,7 @@
 #include <sys/signal.h>
 #include <time.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 struct ftdi_context *ftdi;
 int client_fd = -1;
@@ -104,7 +105,7 @@ int main(int argc, char *argv[]) {
       sscanf(optarg, "%x", &ftdi_pid);
       break;
     case 'f':
-      sscanf(optarg, "%lld", &freq_mhz);
+      sscanf(optarg, "%" SCNu64, &freq_mhz);
       break;
     default: /* '?' */
       fprintf(stderr, "Usage: %s [-d] [-v|-r] [-V vid] [-p pid] [-f freq]\n", argv[0]);
