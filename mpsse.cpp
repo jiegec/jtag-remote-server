@@ -179,10 +179,6 @@ bool mpsse_jtag_scan_chain_recv(uint8_t *recv, size_t num_bits, bool flip_tms) {
     recv[(num_bits - 1) / 8] |= ((last_bit >> 7) & 1) << ((num_bits - 1) % 8);
   }
 
-  dprintf("Read TDO: ");
-  print_bitvec(recv, num_bits);
-  dprintf("\n");
-
   return true;
 }
 

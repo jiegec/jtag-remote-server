@@ -9,35 +9,8 @@ static struct ftdi_context *ftdi;
 // reference:
 // https://github.com/openocd-org/openocd/blob/master/src/jtag/drivers/usb_blaster/usb_blaster.c
 
-bool usb_blaster_init() {
-  printf("Initialize ftdi\n");
-  ftdi = ftdi_new();
-  assert(ftdi);
-
-  printf("Use channel %c\n", (int)ftdi_channel - 1 + 'A');
-  int ret = ftdi_set_interface(ftdi, ftdi_channel);
-  if (ret) {
-    printf("Error: %s\n", ftdi_get_error_string(ftdi));
-    return false;
-  }
-
-  printf("Open device vid=0x%04x pid=0x%04x\n", ftdi_vid, ftdi_pid);
-  ret = ftdi_usb_open(ftdi, ftdi_vid, ftdi_pid);
-  if (ret) {
-    printf("Error: %s\n", ftdi_get_error_string(ftdi));
-    return false;
-  }
-
-  ret = ftdi_usb_reset(ftdi);
-  assert(ret == 0);
-  ret = ftdi_set_baudrate(ftdi, 115200);
-  assert(ret == 0);
-  ret = ftdi_set_latency_timer(ftdi, 1); // reduce latency
-  assert(ret == 0);
-
-  ftdi_set_bitmode(ftdi, 0, 0);
-  return true;
-}
+static uint8_t recv_buffer[4096];
+static size_t recv_buffer_len = 0;
 
 // ublast_build_out
 uint8_t build_command(int tms, int tdi, int tck, bool read) {
@@ -50,6 +23,9 @@ uint8_t build_command(int tms, int tdi, int tck, bool read) {
   if (tms) {
     command |= 1 << 1;
   }
+  // nce, ncs
+  command |= 1 << 2;
+  command |= 1 << 3;
   // tdi
   if (tdi) {
     command |= 1 << 4;
@@ -61,6 +37,45 @@ uint8_t build_command(int tms, int tdi, int tck, bool read) {
     command |= 1 << 6;
   }
   return command;
+}
+
+
+bool usb_blaster_init() {
+  printf("Initialize ftdi\n");
+  ftdi = ftdi_new();
+  assert(ftdi);
+
+  printf("Open device vid=0x%04x pid=0x%04x\n", ftdi_vid, ftdi_pid);
+  int ret = ftdi_usb_open(ftdi, ftdi_vid, ftdi_pid);
+  if (ret) {
+    printf("Error: %s\n", ftdi_get_error_string(ftdi));
+    return false;
+  }
+
+  ret = ftdi_usb_reset(ftdi);
+  assert(ret == 0);
+  ret = ftdi_set_baudrate(ftdi, 115200);
+  assert(ret == 0);
+  ret = ftdi_set_latency_timer(ftdi, 1); // reduce latency
+  assert(ret == 0);
+
+  ftdi_disable_bitbang(ftdi);
+
+  // flush queue
+  uint8_t buffer[4096];
+  for (int i = 0;i < 4096;i++) {
+    buffer[i] = build_command(0, 0, (i % 2), false);
+  }
+
+  if (ftdi_write_data(ftdi, buffer, 4096) != 4096) {
+    printf("Error: %s\n", ftdi_get_error_string(ftdi));
+    return false;
+  }
+
+  // reset JTAG
+  uint8_t tms_reset = 0xff;
+  usb_blaster_jtag_tms_seq(&tms_reset, 5);
+  return true;
 }
 
 bool usb_blaster_deinit() { return true; }
@@ -97,6 +112,8 @@ bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
   }
   uint8_t do_read_flag = do_read ? (1 << 6) : 0;
 
+  assert(recv_buffer_len == 0);
+
   // send whole bytes first
   size_t length_in_bytes = bulk_bits / 8;
   uint8_t buffer[256];
@@ -109,7 +126,7 @@ bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
 
       // byte-shift mode
       buffer[buffer_len++] = (1 << 7) | do_read_flag | trans;
-      memcpy(&buffer[buffer_len], data, trans);
+      memcpy(&buffer[buffer_len], &data[i], trans);
       buffer_len += trans;
 
       if (ftdi_write_data(ftdi, buffer, buffer_len) != buffer_len) {
@@ -117,7 +134,14 @@ bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
         return false;
       }
 
-      i += MAX_PACKET_SIZE;
+      // read immediately
+      if (ftdi_read_data(ftdi, &recv_buffer[recv_buffer_len], trans) != trans) {
+        printf("Error: %s\n", ftdi_get_error_string(ftdi));
+        return false;
+      }
+      recv_buffer_len += trans;
+
+      i += trans;
     }
   }
 
@@ -139,6 +163,14 @@ bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
       printf("Error: %s\n", ftdi_get_error_string(ftdi));
       return false;
     }
+
+    // read immediately
+    int trans = bulk_bits % 8;
+    if (ftdi_read_data(ftdi, &recv_buffer[recv_buffer_len], trans) != trans) {
+      printf("Error: %s\n", ftdi_get_error_string(ftdi));
+      return false;
+    }
+    recv_buffer_len += trans;
   }
 
   if (flip_tms) {
@@ -163,6 +195,13 @@ bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
       printf("Error: %s\n", ftdi_get_error_string(ftdi));
       return false;
     }
+
+    // read immediately
+    if (ftdi_read_data(ftdi, &recv_buffer[recv_buffer_len], 1) != 1) {
+      printf("Error: %s\n", ftdi_get_error_string(ftdi));
+      return false;
+    }
+    recv_buffer_len += 1;
   }
   return true;
 }
@@ -183,22 +222,14 @@ bool usb_blaster_jtag_scan_chain_recv(uint8_t *recv, size_t num_bits,
   size_t offset = 0;
   size_t length_in_bytes = bulk_bits / 8;
   if (length_in_bytes) {
-    while (length_in_bytes > offset) {
-      int read = ftdi_read_data(ftdi, &recv[offset], length_in_bytes - offset);
-      if (read < 0) {
-        printf("Error: %s\n", ftdi_get_error_string(ftdi));
-        return false;
-      }
-      offset += read;
-    }
+    memcpy(recv, &recv_buffer[offset], length_in_bytes);
+    offset += length_in_bytes;
   }
 
   // read rest bits
   if (bulk_bits % 8) {
     for (int i = 0; i < bulk_bits % 8; i++) {
-      uint8_t last_bit;
-      while (ftdi_read_data(ftdi, &last_bit, 1) != 1)
-        ;
+      uint8_t last_bit = recv_buffer[offset++];
 
       if (last_bit & 1) {
         recv[bulk_bits / 8] |= (1 << i);
@@ -208,14 +239,15 @@ bool usb_blaster_jtag_scan_chain_recv(uint8_t *recv, size_t num_bits,
 
   // handle last bit when TMS=1
   if (flip_tms) {
-    uint8_t last_bit;
-    while (ftdi_read_data(ftdi, &last_bit, 1) != 1)
-      ;
+    uint8_t last_bit = recv_buffer[offset++];
 
     if (last_bit & 1) {
       recv[(num_bits - 1) / 8] |= 1 << ((num_bits - 1) % 8);
     }
   }
+
+  assert(offset == recv_buffer_len);
+  recv_buffer_len = 0;
   return true;
 }
 
