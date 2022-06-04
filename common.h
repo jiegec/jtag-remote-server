@@ -114,6 +114,9 @@ extern uint8_t buffer[BUFFER_SIZE];
 extern size_t buffer_begin;
 extern size_t buffer_end;
 
+// ftdi read helper
+bool ftdi_read_retry(struct ftdi_context *ftdi, uint8_t *data, size_t len);
+
 bool read_socket();
 
 #endif

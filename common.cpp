@@ -466,3 +466,19 @@ bool adapter_deinit() { return adapter->deinit(); }
 bool adapter_set_tck_freq(uint64_t freq_mhz) {
   return adapter->set_tck_freq(freq_mhz);
 }
+
+bool ftdi_read_retry(struct ftdi_context *ftdi, uint8_t *data, size_t len) {
+  int retry = 100;
+  size_t offset = 0;
+  while (offset < len && (retry > 0)) {
+    int res = ftdi_read_data(ftdi, &data[offset], len - offset);
+    if (res < 0) {
+      printf("Error: %s\n", ftdi_get_error_string(ftdi));
+      return false;
+    }
+    offset += res;
+    retry--;
+  }
+
+  return offset == len;
+}

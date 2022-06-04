@@ -6,5 +6,6 @@ pkgs.mkShell {
     pkgs.cmake
     pkgs.pkgconfig
     pkgs.libftdi1
+    pkgs.gdb
   ];
 }

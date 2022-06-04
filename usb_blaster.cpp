@@ -60,6 +60,7 @@ bool usb_blaster_init() {
 
   ftdi_disable_bitbang(ftdi);
 
+  printf("Initialize usb blaster\n");
   // flush queue
   uint8_t buffer[4096];
   for (int i = 0; i < 4096; i++) {
@@ -135,9 +136,7 @@ bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
 
       if (do_read) {
         // read immediately
-        if (ftdi_read_data(ftdi, &recv_buffer[recv_buffer_len], trans) !=
-            trans) {
-          printf("Error: %s\n", ftdi_get_error_string(ftdi));
+        if (!ftdi_read_retry(ftdi, &recv_buffer[recv_buffer_len], trans)) {
           return false;
         }
         recv_buffer_len += trans;
