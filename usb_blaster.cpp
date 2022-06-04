@@ -39,7 +39,6 @@ uint8_t build_command(int tms, int tdi, int tck, bool read) {
   return command;
 }
 
-
 bool usb_blaster_init() {
   printf("Initialize ftdi\n");
   ftdi = ftdi_new();
@@ -63,7 +62,7 @@ bool usb_blaster_init() {
 
   // flush queue
   uint8_t buffer[4096];
-  for (int i = 0;i < 4096;i++) {
+  for (int i = 0; i < 4096; i++) {
     buffer[i] = build_command(0, 0, (i % 2), false);
   }
 
@@ -134,12 +133,15 @@ bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
         return false;
       }
 
-      // read immediately
-      if (ftdi_read_data(ftdi, &recv_buffer[recv_buffer_len], trans) != trans) {
-        printf("Error: %s\n", ftdi_get_error_string(ftdi));
-        return false;
+      if (do_read) {
+        // read immediately
+        if (ftdi_read_data(ftdi, &recv_buffer[recv_buffer_len], trans) !=
+            trans) {
+          printf("Error: %s\n", ftdi_get_error_string(ftdi));
+          return false;
+        }
+        recv_buffer_len += trans;
       }
-      recv_buffer_len += trans;
 
       i += trans;
     }
@@ -164,13 +166,15 @@ bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
       return false;
     }
 
-    // read immediately
-    int trans = bulk_bits % 8;
-    if (ftdi_read_data(ftdi, &recv_buffer[recv_buffer_len], trans) != trans) {
-      printf("Error: %s\n", ftdi_get_error_string(ftdi));
-      return false;
+    if (do_read) {
+      // read immediately
+      int trans = bulk_bits % 8;
+      if (ftdi_read_data(ftdi, &recv_buffer[recv_buffer_len], trans) != trans) {
+        printf("Error: %s\n", ftdi_get_error_string(ftdi));
+        return false;
+      }
+      recv_buffer_len += trans;
     }
-    recv_buffer_len += trans;
   }
 
   if (flip_tms) {
@@ -196,12 +200,14 @@ bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
       return false;
     }
 
-    // read immediately
-    if (ftdi_read_data(ftdi, &recv_buffer[recv_buffer_len], 1) != 1) {
-      printf("Error: %s\n", ftdi_get_error_string(ftdi));
-      return false;
+    if (do_read) {
+      // read immediately
+      if (ftdi_read_data(ftdi, &recv_buffer[recv_buffer_len], 1) != 1) {
+        printf("Error: %s\n", ftdi_get_error_string(ftdi));
+        return false;
+      }
+      recv_buffer_len += 1;
     }
-    recv_buffer_len += 1;
   }
   return true;
 }
