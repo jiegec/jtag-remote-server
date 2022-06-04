@@ -18,6 +18,11 @@ Supported protocols:
 - Remote bitbang: for OpenOCD
 - JTAG vpi: for OpenOCD
 
+Supported adapters:
+
+- FT2232/FT4232 based Xilinx cables
+- USB Blaster
+
 Some example OpenOCD configs are provided under `examples` directory.
 
 ## Example usage
@@ -29,6 +34,8 @@ For example, you use MacBook and Arty A7 for FPGA development, you can:
 3. Add Xilinx Virtual Cable in Xilinx: 127.0.0.1:2542
 
 Then you can find `xc7a35t` device in Xilinx and you can debug remotely.
+
+For USB Blaster: `./jtag-remote-server -V 09fb -p 6001 -b`.
 
 ## Performance
 
