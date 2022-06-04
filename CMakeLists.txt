@@ -11,3 +11,5 @@ target_link_libraries(jtag-remote-server ${FTDI_LDFLAGS})
 target_include_directories(jtag-remote-server PUBLIC ${FTDI_INCLUDE_DIRS})
 
 install(TARGETS jtag-remote-server)
+install(FILES README.md LICENSE DESTINATION share/jtag-remote-server)
+install(DIRECTORY example DESTINATION share/jtag-remote-server)
