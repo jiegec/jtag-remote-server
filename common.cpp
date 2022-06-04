@@ -473,7 +473,8 @@ bool ftdi_read_retry(struct ftdi_context *ftdi, uint8_t *data, size_t len) {
   while (offset < len && (retry > 0)) {
     int res = ftdi_read_data(ftdi, &data[offset], len - offset);
     if (res < 0) {
-      printf("Error: %s\n", ftdi_get_error_string(ftdi));
+      printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
+             ftdi_get_error_string(ftdi));
       return false;
     }
     offset += res;
