@@ -382,7 +382,14 @@ void jtag_jtagd_tick() {
             add_response(126);
             end_response();
           }
-          p += ntohs(header->be_len);
+
+          uint16_t header_len = ntohs(header->be_len);
+          if (!header_len) {
+            // avoid infinite loop
+            break;
+          }
+
+          p += header_len;
         }
 
         if (send_buffer_size > 2) {
