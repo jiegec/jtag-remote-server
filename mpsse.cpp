@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <ftdi.h>
 
-struct ftdi_context *ftdi;
+static struct ftdi_context *ftdi;
 
 bool mpsse_init() {
   printf("Initialize ftdi\n");
@@ -32,6 +32,7 @@ bool mpsse_init() {
   assert(ret == 0);
 
   // reset mpsse and enable
+  printf("Enable mpsse\n");
   ftdi_set_bitmode(ftdi, 0, 0);
   ftdi_set_bitmode(ftdi, 0, BITMODE_MPSSE);
 

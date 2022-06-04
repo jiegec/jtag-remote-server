@@ -1,4 +1,5 @@
 #include "common.h"
+#include "usb_blaster.h"
 #include "jtagd.h"
 #include "rbb.h"
 #include "vpi.h"
@@ -44,7 +45,7 @@ int main(int argc, char *argv[]) {
   // https://man7.org/linux/man-pages/man3/getopt.3.html
   int opt;
   Protocol proto = Protocol::VPI;
-  while ((opt = getopt(argc, argv, "dvrxjc:V:p:f:")) != -1) {
+  while ((opt = getopt(argc, argv, "dvrxjbc:V:p:f:")) != -1) {
     switch (opt) {
     case 'd':
       debug = true;
@@ -60,6 +61,9 @@ int main(int argc, char *argv[]) {
       break;
     case 'j':
       proto = Protocol::JTAGD;
+      break;
+    case 'b':
+      adapter = &usb_blaster_driver;
       break;
     case 'c':
       if ('A' <= optarg[0] && optarg[0] <= 'D') {
@@ -83,6 +87,7 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "\t-r: Use remote bitbang protocol\n");
       fprintf(stderr, "\t-x: Use xilinx virtual cable protocol\n");
       fprintf(stderr, "\t-j: Use intel jtag server protocol\n");
+      fprintf(stderr, "\t-b: Use USB Blaster adapter\n");
       fprintf(stderr, "\t-c A|B|C|D: Select ftdi channel\n");
       fprintf(stderr, "\t-V VID: Specify usb vid\n");
       fprintf(stderr, "\t-p PID: Specify usb pid\n");
