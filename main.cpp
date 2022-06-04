@@ -41,6 +41,7 @@ enum Protocol { VPI, RBB, XVC, JTAGD };
 
 int main(int argc, char *argv[]) {
   signal(SIGINT, sigint_handler);
+  signal(SIGPIPE, SIG_IGN);
 
   // https://man7.org/linux/man-pages/man3/getopt.3.html
   int opt;

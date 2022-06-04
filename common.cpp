@@ -165,7 +165,7 @@ bool write_full(int fd, const uint8_t *data, size_t count) {
     ssize_t res = write(fd, &data[num_sent], count - num_sent);
     if (res > 0) {
       num_sent += res;
-    } else if (count < 0) {
+    } else if (res < 0) {
       return false;
     }
   }
