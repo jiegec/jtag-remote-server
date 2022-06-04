@@ -137,6 +137,10 @@ bool jtag_scan_chain(const uint8_t *data, uint8_t *recv, size_t num_bits,
     if (!jtag_scan_chain_recv(recv, num_bits, flip_tms)) {
       return false;
     }
+
+    dprintf("Read TDO %d bits: ", num_bits);
+    print_bitvec(recv, num_bits);
+    dprintf("\n");
   }
   return true;
 }

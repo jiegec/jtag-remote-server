@@ -6,6 +6,9 @@
 
 static struct ftdi_context *ftdi;
 
+// reference:
+// https://github.com/openocd-org/openocd/blob/master/src/jtag/drivers/usb_blaster/usb_blaster.c
+
 bool usb_blaster_init() {
   printf("Initialize ftdi\n");
   ftdi = ftdi_new();
@@ -36,19 +39,183 @@ bool usb_blaster_init() {
   return true;
 }
 
+// ublast_build_out
+uint8_t build_command(int tms, int tdi, int tck, bool read) {
+  uint8_t command = 0;
+  // tck
+  if (tck) {
+    command |= 1 << 0;
+  }
+  // tms
+  if (tms) {
+    command |= 1 << 1;
+  }
+  // tdi
+  if (tdi) {
+    command |= 1 << 4;
+  }
+  // led
+  command |= 1 << 5;
+  // read
+  if (read) {
+    command |= 1 << 6;
+  }
+  return command;
+}
+
 bool usb_blaster_deinit() { return true; }
 
 bool usb_blaster_jtag_tms_seq(const uint8_t *data, size_t num_bits) {
+  // for each bit
+  // clock tms with tck=0 and tck=1
+  uint8_t buffer[256];
+  size_t buffer_len = 0;
+  uint8_t bit;
+  for (int i = 0; i < num_bits; i++) {
+    bit = (data[i / 8] >> (i % 8)) & 1;
+    // tck=0
+    buffer[buffer_len++] = build_command(bit, 0, 0, false);
+    // tck=1
+    buffer[buffer_len++] = build_command(bit, 0, 1, false);
+  }
+  // set tck=0
+  buffer[buffer_len++] = build_command(bit, 0, 0, false);
+
+  if (ftdi_write_data(ftdi, buffer, buffer_len) != buffer_len) {
+    printf("Error: %s\n", ftdi_get_error_string(ftdi));
+    return false;
+  }
   return true;
 }
 
 bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
                                       bool flip_tms, bool do_read) {
+  size_t bulk_bits = num_bits;
+  if (flip_tms) {
+    // last bit should be sent along TMS 0->1
+    bulk_bits -= 1;
+  }
+  uint8_t do_read_flag = do_read ? (1 << 6) : 0;
+
+  // send whole bytes first
+  size_t length_in_bytes = bulk_bits / 8;
+  uint8_t buffer[256];
+  size_t buffer_len = 0;
+  if (length_in_bytes) {
+    const size_t MAX_PACKET_SIZE = 32;
+    for (int i = 0; i < length_in_bytes;) {
+      buffer_len = 0;
+      int trans = std::min(length_in_bytes - i, MAX_PACKET_SIZE);
+
+      // byte-shift mode
+      buffer[buffer_len++] = (1 << 7) | do_read_flag | trans;
+      memcpy(&buffer[buffer_len], data, trans);
+      buffer_len += trans;
+
+      if (ftdi_write_data(ftdi, buffer, buffer_len) != buffer_len) {
+        printf("Error: %s\n", ftdi_get_error_string(ftdi));
+        return false;
+      }
+
+      i += MAX_PACKET_SIZE;
+    }
+  }
+
+  // sent rest bits
+  if (bulk_bits % 8) {
+    buffer_len = 0;
+
+    for (int i = 0; i < bulk_bits % 8; i++) {
+      int offset = length_in_bytes * 8 + i;
+      uint8_t bit = (data[offset / 8] >> (offset % 8)) & 1;
+
+      // tck=0
+      buffer[buffer_len++] = build_command(0, bit, 0, false);
+      // tck=1
+      buffer[buffer_len++] = build_command(0, bit, 1, do_read);
+    }
+
+    if (ftdi_write_data(ftdi, buffer, buffer_len) != buffer_len) {
+      printf("Error: %s\n", ftdi_get_error_string(ftdi));
+      return false;
+    }
+  }
+
+  if (flip_tms) {
+    // send last bit along TMS=1
+    JtagState new_state = next_state(state, 1);
+    dprintf("JTAG state: %s -> %s\n", state_to_string(state),
+            state_to_string(new_state));
+    state = new_state;
+
+    buffer_len = 0;
+
+    uint8_t bit = (data[(num_bits - 1) / 8] >> ((num_bits - 1) % 8)) & 1;
+
+    // tck=0
+    buffer[buffer_len++] = build_command(1, bit, 0, false);
+    // tck=1
+    buffer[buffer_len++] = build_command(1, bit, 1, do_read);
+    // tck=0
+    buffer[buffer_len++] = build_command(1, bit, 0, false);
+
+    if (ftdi_write_data(ftdi, buffer, buffer_len) != buffer_len) {
+      printf("Error: %s\n", ftdi_get_error_string(ftdi));
+      return false;
+    }
+  }
   return true;
 }
 
 bool usb_blaster_jtag_scan_chain_recv(uint8_t *recv, size_t num_bits,
                                       bool flip_tms) {
+
+  size_t bulk_bits = num_bits;
+  if (flip_tms) {
+    // last bit should be sent along TMS 0->1
+    bulk_bits -= 1;
+  }
+
+  size_t len = (bulk_bits + 7) / 8;
+  memset(recv, 0, len);
+
+  // read whole bytes first
+  size_t offset = 0;
+  size_t length_in_bytes = bulk_bits / 8;
+  if (length_in_bytes) {
+    while (length_in_bytes > offset) {
+      int read = ftdi_read_data(ftdi, &recv[offset], length_in_bytes - offset);
+      if (read < 0) {
+        printf("Error: %s\n", ftdi_get_error_string(ftdi));
+        return false;
+      }
+      offset += read;
+    }
+  }
+
+  // read rest bits
+  if (bulk_bits % 8) {
+    for (int i = 0; i < bulk_bits % 8; i++) {
+      uint8_t last_bit;
+      while (ftdi_read_data(ftdi, &last_bit, 1) != 1)
+        ;
+
+      if (last_bit & 1) {
+        recv[bulk_bits / 8] |= (1 << i);
+      }
+    }
+  }
+
+  // handle last bit when TMS=1
+  if (flip_tms) {
+    uint8_t last_bit;
+    while (ftdi_read_data(ftdi, &last_bit, 1) != 1)
+      ;
+
+    if (last_bit & 1) {
+      recv[(num_bits - 1) / 8] |= 1 << ((num_bits - 1) % 8);
+    }
+  }
   return true;
 }
 
