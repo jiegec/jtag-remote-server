@@ -165,7 +165,7 @@ bool write_full(int fd, const uint8_t *data, size_t count) {
     ssize_t res = write(fd, &data[num_sent], count - num_sent);
     if (res > 0) {
       num_sent += res;
-    } else if (res < 0) {
+    } else if (res <= 0) {
       return false;
     }
   }
@@ -181,6 +181,7 @@ void dprintf(const char *fmt, ...) {
   va_start(va_args, fmt);
   vprintf(fmt, va_args);
   va_end(va_args);
+  fflush(stdout);
 }
 
 bool setup_tcp_server(uint16_t port) {
