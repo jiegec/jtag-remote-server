@@ -1,6 +1,7 @@
 #include "common.h"
 #include <deque>
 #include <string>
+#include <map>
 
 bool jtag_jtagd_init() {
   if (!setup_tcp_server(1309)) {
@@ -111,6 +112,7 @@ struct Message {
 // saved device list
 std::vector<uint32_t> devices;
 std::deque<Message> messages;
+std::map<int, std::deque<uint32_t>> fifos;
 
 void jtag_jtagd_tick() {
   // leave space for header
@@ -135,32 +137,39 @@ void jtag_jtagd_tick() {
         dprintf("\n");
         buffer_begin += 2;
 
-        // one or more messages
-        uint8_t *p = (uint8_t *)&buffer[buffer_begin];
-        uint8_t *end = (uint8_t *)&buffer[buffer_begin + length];
-        while (p < end) {
-          MessageHeader *header = (MessageHeader *)p;
-          dprintf("Received message of command 0x%02X length %d:\n",
-                  header->command, ntohs(header->be_len));
-          uint16_t header_len = ntohs(header->be_len);
-          for (int i = 0; i < header_len; i++) {
-            dprintf("%02X ", (uint8_t)p[i]);
+        if (mux == 0) {
+          // one or more messages
+          uint8_t *p = (uint8_t *)&buffer[buffer_begin];
+          uint8_t *end = (uint8_t *)&buffer[buffer_begin + length];
+          while (p < end) {
+            MessageHeader *header = (MessageHeader *)p;
+            dprintf("Received message of command 0x%02X length %d:\n",
+                    header->command, ntohs(header->be_len));
+            uint16_t header_len = ntohs(header->be_len);
+            for (int i = 0; i < header_len; i++) {
+              dprintf("%02X ", (uint8_t)p[i]);
+            }
+            dprintf("\n");
+
+            if (header_len < 4) {
+              // bad header, avoid infinite loop
+              printf("Unexpected header len %d\n", header_len);
+              break;
+            }
+
+            Message msg;
+            msg.command = header->command;
+            msg.body.insert(msg.body.end(), &p[4], p + header_len);
+
+            messages.push_back(msg);
+
+            p += header_len;
           }
-          dprintf("\n");
-
-          if (header_len < 4) {
-            // bad header, avoid infinite loop
-            printf("Unexpected header len %d\n", header_len);
-            break;
-          }
-
-          Message msg;
-          msg.command = header->command;
-          msg.body.insert(msg.body.end(), &p[4], p + header_len);
-
-          messages.push_back(msg);
-
-          p += header_len;
+        } else if (mux >= 4) {
+          // fifo
+          dprintf("Added %d bytes to fifo\n", length);
+          fifos[mux].insert(fifos[mux].end(), buffer_begin,
+                            buffer_begin + length);
         }
 
         buffer_begin += length;
