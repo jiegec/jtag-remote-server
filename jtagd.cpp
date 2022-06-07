@@ -1,7 +1,7 @@
 #include "common.h"
 #include <deque>
-#include <string>
 #include <map>
+#include <string>
 
 bool jtag_jtagd_init() {
   if (!setup_tcp_server(1309)) {
@@ -112,7 +112,20 @@ struct Message {
 // saved device list
 std::vector<uint32_t> devices;
 std::deque<Message> messages;
-std::map<int, std::deque<uint32_t>> fifos;
+std::map<int, std::vector<uint32_t>> fifos;
+const int FIFO_MIN = 4;
+
+bool pop_fifo(uint8_t *buffer, size_t length) {
+  if (length <= fifos[FIFO_MIN].size()) {
+    dprintf("Pop %d bytes from fifo\n", length);
+    memcpy(buffer, &fifos[FIFO_MIN][0], length);
+    fifos[FIFO_MIN].erase(fifos[FIFO_MIN].begin(),
+                          fifos[FIFO_MIN].begin() + length);
+    return true;
+  } else {
+    return false;
+  }
+}
 
 void jtag_jtagd_tick() {
   // leave space for header
@@ -182,6 +195,13 @@ void jtag_jtagd_tick() {
     while (!messages.empty()) {
       Message msg = messages.front();
 
+      dprintf("Processing message of command 0x%02X length %d:\n", msg.command,
+              msg.body.size());
+      for (int i = 0; i < msg.body.size(); i++) {
+        dprintf("%02X ", msg.body[i]);
+      }
+      dprintf("\n");
+
       if (msg.command == 0x80) {
         // GET_HARDWARE
         dprintf("GET_HARDWARE\n");
@@ -218,7 +238,7 @@ void jtag_jtagd_tick() {
         int features = 0x0800; // AJI_FEATURE_JTAG
         add_int(features);
 
-        do_send(4); // FIFO_MIN
+        do_send(FIFO_MIN);
       } else if (msg.command == 0x83) {
         // GET_VERSION_INFO
         dprintf("GET_VERSION_INFO\n");
@@ -304,7 +324,7 @@ void jtag_jtagd_tick() {
           std::string device_name = "device0";
           add_string(device_name);
         }
-        do_send(4); // FIFO_MIN
+        do_send(FIFO_MIN);
       } else if (msg.command == 0xA8) {
         // OPEN_DEVICE
         dprintf("OPEN_DEVICE\n");
@@ -337,6 +357,7 @@ void jtag_jtagd_tick() {
         // success
         add_response(0);
         end_response();
+        do_send(0);
       } else if (msg.command == 0xC2) {
         // UNLOCK_DEVICE
         dprintf("UNLOCK_DEVICE\n");
@@ -350,7 +371,7 @@ void jtag_jtagd_tick() {
         dprintf("ACCESS_IR_2\n");
 
         // guessed input:
-        // int: ?
+        // int: open_id
         // int: 1
         // int: idcode
         // int: instruction
@@ -373,6 +394,7 @@ void jtag_jtagd_tick() {
         memcpy(&res, read_back, sizeof(read_back));
         add_int(res);
         end_response();
+        do_send(0);
       } else if (msg.command == 0xC8) {
         // it does not appear in libaji_client
         // but it is adjacent to ACCESS_DR
@@ -391,8 +413,23 @@ void jtag_jtagd_tick() {
         uint32_t length_dr;
         memcpy(&length_dr, &msg.body[12], 4);
         length_dr = ntohl(length_dr);
+        uint32_t write_length;
+        memcpy(&write_length, &msg.body[20], 4);
+        write_length = ntohl(write_length);
+        uint32_t read_length;
+        memcpy(&read_length, &msg.body[28], 4);
+        read_length = ntohl(read_length);
+        printf("Got length_dr=%d write_length=%d read_length=%d\n", length_dr,
+               write_length, read_length);
+
         uint8_t send[BUFFER_SIZE] = {};
         uint8_t recv[BUFFER_SIZE] = {};
+
+        // try to get data from fifo
+        if (!pop_fifo(send, write_length / 8)) {
+          // try again later
+          break;
+        }
 
         jtag_tms_seq_to(JtagState::ShiftDR);
         jtag_scan_chain(send, recv, length_dr, true, true);
@@ -402,11 +439,13 @@ void jtag_jtagd_tick() {
         end_response();
         do_send(0);
 
-        size_t num_bytes = (length_dr + 7) / 8;
+        if (read_length > 0) {
+          size_t num_bytes = (read_length + 7) / 8;
 
-        // send data via fifo
-        add_array(recv, num_bytes);
-        do_send(4); // FIFO_MIN
+          // send data via fifo
+          add_array(recv, num_bytes);
+          do_send(FIFO_MIN);
+        }
       } else if (msg.command == 0xCA) {
         // RUN_TEST_IDLE
         dprintf("RUN_TEST_IDLE\n");
@@ -414,6 +453,7 @@ void jtag_jtagd_tick() {
 
         add_response(0);
         end_response();
+        do_send(0);
       } else if (msg.command == 0xFE) {
         // USE_PROTOCOL_VERSION
         dprintf("USE_PROTOCOL_VERSION\n");
@@ -438,7 +478,6 @@ void jtag_jtagd_tick() {
     if (send_buffer_size > 2) {
       do_send(0);
     }
-
   } else {
     messages.clear();
     // accept connection

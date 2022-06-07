@@ -2,10 +2,10 @@
 }:
 
 pkgs.mkShell {
-  buildInputs = [
-    pkgs.cmake
-    pkgs.pkgconfig
-    pkgs.libftdi1
-    pkgs.gdb
+  buildInputs = with pkgs; [
+    cmake
+    pkgconfig
+    libftdi1
+    gdb
   ];
 }
