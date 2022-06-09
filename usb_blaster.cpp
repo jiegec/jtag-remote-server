@@ -88,20 +88,20 @@ bool usb_blaster_deinit() { return true; }
 bool usb_blaster_jtag_tms_seq(const uint8_t *data, size_t num_bits) {
   // for each bit
   // clock tms with tck=0 and tck=1
-  uint8_t buffer[256];
-  size_t buffer_len = 0;
+  std::vector<uint8_t> buffer;
+  buffer.reserve(num_bits * 2 + 1);
   uint8_t bit;
   for (int i = 0; i < num_bits; i++) {
     bit = (data[i / 8] >> (i % 8)) & 1;
     // tck=0
-    buffer[buffer_len++] = build_command(bit, 0, 0, false);
+    buffer.push_back(build_command(bit, 0, 0, false));
     // tck=1
-    buffer[buffer_len++] = build_command(bit, 0, 1, false);
+    buffer.push_back(build_command(bit, 0, 1, false));
   }
   // set tck=0
-  buffer[buffer_len++] = build_command(bit, 0, 0, false);
+  buffer.push_back(build_command(bit, 0, 0, false));
 
-  if (ftdi_write_data(ftdi, buffer, buffer_len) != buffer_len) {
+  if (ftdi_write_data(ftdi, buffer.data(), buffer.size()) != buffer.size()) {
     printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
            ftdi_get_error_string(ftdi));
     return false;
