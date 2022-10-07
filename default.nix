@@ -12,6 +12,6 @@ stdenv.mkDerivation {
 
   buildInputs = [
     libftdi1
-    pkgconfig
+    pkg-config
   ];
 }

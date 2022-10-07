@@ -4,7 +4,7 @@
 pkgs.mkShell {
   buildInputs = with pkgs; [
     cmake
-    pkgconfig
+    pkg-config
     libftdi1
     gdb
   ];
