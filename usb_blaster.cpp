@@ -47,7 +47,8 @@ bool usb_blaster_init() {
   printf("Open device vid=0x%04x pid=0x%04x\n", ftdi_vid, ftdi_pid);
   int ret = ftdi_usb_open(ftdi, ftdi_vid, ftdi_pid);
   if (ret) {
-    printf("Error: %s\n", ftdi_get_error_string(ftdi));
+    printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
+           ftdi_get_error_string(ftdi));
     return false;
   }
 
@@ -68,7 +69,8 @@ bool usb_blaster_init() {
   }
 
   if (ftdi_write_data(ftdi, buffer, 4096) != 4096) {
-    printf("Error: %s\n", ftdi_get_error_string(ftdi));
+    printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
+           ftdi_get_error_string(ftdi));
     return false;
   }
 
@@ -136,7 +138,7 @@ bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
       buffer_len += trans;
 
       if (ftdi_write_data(ftdi, buffer, buffer_len) != buffer_len) {
-        printf("Error @ %s:%d: %s\n", __FILE__, __LINE__,
+        printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
                ftdi_get_error_string(ftdi));
         return false;
       }
@@ -177,7 +179,7 @@ bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
       // read immediately
       int trans = bulk_bits % 8;
       if (!ftdi_read_retry(ftdi, &recv_buffer[recv_buffer_len], trans)) {
-        printf("Error @ %s:%d: %s\n", __FILE__, __LINE__,
+        printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
                ftdi_get_error_string(ftdi));
         return false;
       }
@@ -204,14 +206,16 @@ bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
     buffer[buffer_len++] = build_command(1, bit, 0, false);
 
     if (ftdi_write_data(ftdi, buffer, buffer_len) != buffer_len) {
-      printf("Error: %s\n", ftdi_get_error_string(ftdi));
+      printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
+             ftdi_get_error_string(ftdi));
       return false;
     }
 
     if (do_read) {
       // read immediately
       if (!ftdi_read_retry(ftdi, &recv_buffer[recv_buffer_len], 1)) {
-        printf("Error: %s\n", ftdi_get_error_string(ftdi));
+        printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
+               ftdi_get_error_string(ftdi));
         return false;
       }
       recv_buffer_len += 1;
