@@ -484,3 +484,20 @@ bool ftdi_read_retry(struct ftdi_context *ftdi, uint8_t *data, size_t len) {
 
   return offset == len;
 }
+
+bool ftdi_write_retry(struct ftdi_context *ftdi, const uint8_t *data, size_t len) {
+  int retry = 100;
+  size_t offset = 0;
+  while (offset < len && (retry > 0)) {
+    int res = ftdi_write_data(ftdi, &data[offset], len - offset);
+    if (res < 0) {
+      printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
+             ftdi_get_error_string(ftdi));
+      return false;
+    }
+    offset += res;
+    retry--;
+  }
+
+  return offset == len;
+}

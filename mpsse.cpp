@@ -40,7 +40,7 @@ bool mpsse_init() {
 
   uint8_t setup[256] = {SET_BITS_LOW,  0x88, 0x8b, SET_BITS_HIGH, 0, 0,
                         SEND_IMMEDIATE};
-  if (ftdi_write_data(ftdi, setup, 7) != 7) {
+  if (!ftdi_write_retry(ftdi, setup, 7)) {
     printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
            ftdi_get_error_string(ftdi));
     return false;
@@ -69,7 +69,7 @@ bool mpsse_jtag_tms_seq(const uint8_t *data, size_t num_bits) {
                          (uint8_t)(cur_bits - 1),
                          // data
                          data[i]};
-    if (ftdi_write_data(ftdi, idle, 3) != 3) {
+    if (!ftdi_write_retry(ftdi, idle, 3)) {
       printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
              ftdi_get_error_string(ftdi));
       return false;
@@ -95,13 +95,13 @@ bool mpsse_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
         (uint8_t)(do_read_flag | MPSSE_DO_WRITE | MPSSE_LSB | MPSSE_WRITE_NEG),
         (uint8_t)((length_in_bytes - 1) & 0xff),
         (uint8_t)((length_in_bytes - 1) >> 8)};
-    if (ftdi_write_data(ftdi, buf, 3) != 3) {
+    if (!ftdi_write_retry(ftdi, buf, 3)) {
       printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
              ftdi_get_error_string(ftdi));
       return false;
     }
 
-    if (ftdi_write_data(ftdi, data, length_in_bytes) != length_in_bytes) {
+    if (!ftdi_write_retry(ftdi, data, length_in_bytes)) {
       printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
              ftdi_get_error_string(ftdi));
       return false;
@@ -118,7 +118,7 @@ bool mpsse_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
         // data
         data[length_in_bytes],
     };
-    if (ftdi_write_data(ftdi, buf, 3) != 3) {
+    if (!ftdi_write_retry(ftdi, buf, 3)) {
       printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
              ftdi_get_error_string(ftdi));
       return false;
@@ -141,7 +141,7 @@ bool mpsse_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
                       // 7-th bit: last bit
                       // TMS=1
                       (uint8_t)(0x01 | (bit << 7))};
-    if (ftdi_write_data(ftdi, buf, 3) != 3) {
+    if (!ftdi_write_retry(ftdi, buf, 3)) {
       printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
              ftdi_get_error_string(ftdi));
       return false;
@@ -199,7 +199,7 @@ bool mpsse_set_tck_freq(uint64_t freq_mhz) {
   printf("Requested jtag tck: %lld MHz\n", freq_mhz);
   printf("Actual jtag tck: %d MHz\n", actual_freq);
   uint8_t setup[256] = {TCK_DIVISOR, (uint8_t)divisor, 0x00, DIS_DIV_5};
-  if (ftdi_write_data(ftdi, setup, 4) != 4) {
+  if (!ftdi_write_retry(ftdi, setup, 4)) {
     printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
            ftdi_get_error_string(ftdi));
     return false;
@@ -217,7 +217,7 @@ bool mpsse_jtag_clock_tck(size_t times) {
         (uint8_t)((times_8 - 1) & 0xFF),
         (uint8_t)((times_8 - 1) >> 8),
     };
-    if (ftdi_write_data(ftdi, buf, 3) != 3) {
+    if (!ftdi_write_retry(ftdi, buf, 3)) {
       printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
              ftdi_get_error_string(ftdi));
       return false;
@@ -230,7 +230,7 @@ bool mpsse_jtag_clock_tck(size_t times) {
         0x8E,
         (uint8_t)((times % 8) - 1),
     };
-    if (ftdi_write_data(ftdi, buf, 2) != 2) {
+    if (!ftdi_write_retry(ftdi, buf, 2)) {
       printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
              ftdi_get_error_string(ftdi));
       return false;
