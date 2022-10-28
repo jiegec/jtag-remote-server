@@ -68,7 +68,7 @@ bool usb_blaster_init() {
     buffer[i] = build_command(0, 0, (i % 2), false);
   }
 
-  if (ftdi_write_data(ftdi, buffer, 4096) != 4096) {
+  if (!ftdi_write_retry(ftdi, buffer, 4096)) {
     printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
            ftdi_get_error_string(ftdi));
     return false;
@@ -103,7 +103,7 @@ bool usb_blaster_jtag_tms_seq(const uint8_t *data, size_t num_bits) {
   // set tck=0
   buffer.push_back(build_command(bit, 0, 0, false));
 
-  if (ftdi_write_data(ftdi, buffer.data(), buffer.size()) != buffer.size()) {
+  if (!ftdi_write_retry(ftdi, buffer.data(), buffer.size())) {
     printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
            ftdi_get_error_string(ftdi));
     return false;
@@ -137,7 +137,7 @@ bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
       memcpy(&buffer[buffer_len], &data[i], trans);
       buffer_len += trans;
 
-      if (ftdi_write_data(ftdi, buffer, buffer_len) != buffer_len) {
+      if (!ftdi_write_retry(ftdi, buffer, buffer_len)) {
         printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
                ftdi_get_error_string(ftdi));
         return false;
@@ -169,7 +169,7 @@ bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
       buffer[buffer_len++] = build_command(0, bit, 1, do_read);
     }
 
-    if (ftdi_write_data(ftdi, buffer, buffer_len) != buffer_len) {
+    if (!ftdi_write_retry(ftdi, buffer, buffer_len)) {
       printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
              ftdi_get_error_string(ftdi));
       return false;
@@ -205,7 +205,7 @@ bool usb_blaster_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
     // tck=0
     buffer[buffer_len++] = build_command(1, bit, 0, false);
 
-    if (ftdi_write_data(ftdi, buffer, buffer_len) != buffer_len) {
+    if (!ftdi_write_retry(ftdi, buffer, buffer_len)) {
       printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
              ftdi_get_error_string(ftdi));
       return false;
