@@ -1,4 +1,4 @@
-with import <nixpkgs> {};
+{ stdenv, cmake, libftdi1, pkg-config }:
 
 stdenv.mkDerivation {
   name = "jtag-remote-server";
