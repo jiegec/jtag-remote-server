@@ -31,7 +31,8 @@ bool mpsse_init() {
   assert(ret == 0);
   ret = ftdi_set_baudrate(ftdi, 115200);
   assert(ret == 0);
-  ret = ftdi_set_latency_timer(ftdi, 1); // reduce latency
+  // set maximum latency to avoid usb bulk write errors
+  ret = ftdi_set_latency_timer(ftdi, 255);
   assert(ret == 0);
 
   // reset mpsse and enable
@@ -136,6 +137,10 @@ bool mpsse_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
 }
 
 bool mpsse_jtag_scan_chain_recv(uint8_t *recv, size_t num_bits, bool flip_tms) {
+  if (!mpsse_buffer_ensure_space(1))
+    return false;
+  // flush FTDI buffers after all write commands are sent
+  mpsse_buffer_append_byte(SEND_IMMEDIATE);
   // send all write commands
   if (!mpsse_buffer_flush())
     return false;
