@@ -1,5 +1,6 @@
 #include "mpsse.h"
 #include "common.h"
+#include "mpsse_buffer.h"
 #include <algorithm>
 #include <ftdi.h>
 
@@ -46,6 +47,8 @@ bool mpsse_init() {
     return false;
   }
 
+  mpsse_buffer_init(ftdi);
+
   if (!mpsse_set_tck_freq(freq_mhz)) {
     return false;
   }
@@ -61,19 +64,16 @@ bool mpsse_deinit() {
 bool mpsse_jtag_tms_seq(const uint8_t *data, size_t num_bits) {
   for (size_t i = 0; i < (num_bits + 7) / 8; i++) {
     uint8_t cur_bits = std::min((size_t)8, num_bits - i * 8);
+    if (!mpsse_buffer_ensure_space(3))
+      return false;
 
     // Clock Data to TMS pin (no read)
-    uint8_t idle[256] = {MPSSE_WRITE_TMS | MPSSE_LSB | MPSSE_BITMODE |
-                             MPSSE_WRITE_NEG,
-                         // length in bits -1
-                         (uint8_t)(cur_bits - 1),
-                         // data
-                         data[i]};
-    if (!ftdi_write_retry(ftdi, idle, 3)) {
-      printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
-             ftdi_get_error_string(ftdi));
-      return false;
-    }
+    mpsse_buffer_append_byte(MPSSE_WRITE_TMS | MPSSE_LSB | MPSSE_BITMODE |
+                             MPSSE_WRITE_NEG);
+    // length in bits -1
+    mpsse_buffer_append_byte((uint8_t)(cur_bits - 1));
+    // data
+    mpsse_buffer_append_byte(data[i]);
   }
 
   return true;
@@ -91,38 +91,25 @@ bool mpsse_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
   // send whole bytes first
   size_t length_in_bytes = bulk_bits / 8;
   if (length_in_bytes) {
-    uint8_t buf[256] = {
-        (uint8_t)(do_read_flag | MPSSE_DO_WRITE | MPSSE_LSB | MPSSE_WRITE_NEG),
-        (uint8_t)((length_in_bytes - 1) & 0xff),
-        (uint8_t)((length_in_bytes - 1) >> 8)};
-    if (!ftdi_write_retry(ftdi, buf, 3)) {
-      printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
-             ftdi_get_error_string(ftdi));
+    if (!mpsse_buffer_ensure_space(3 + length_in_bytes))
       return false;
-    }
-
-    if (!ftdi_write_retry(ftdi, data, length_in_bytes)) {
-      printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
-             ftdi_get_error_string(ftdi));
-      return false;
-    }
+    mpsse_buffer_append_byte((uint8_t)(do_read_flag | MPSSE_DO_WRITE | MPSSE_LSB |
+                             MPSSE_WRITE_NEG));
+    mpsse_buffer_append_byte((uint8_t)((length_in_bytes - 1) & 0xff));
+    mpsse_buffer_append_byte((uint8_t)((length_in_bytes - 1) >> 8));
+    mpsse_buffer_append(data, length_in_bytes);
   }
 
   // sent rest bits
   if (bulk_bits % 8) {
-    uint8_t buf[256] = {
-        (uint8_t)(do_read_flag | MPSSE_DO_WRITE | MPSSE_LSB | MPSSE_WRITE_NEG |
-                  MPSSE_BITMODE),
-        // length in bits -1
-        (uint8_t)((bulk_bits % 8) - 1),
-        // data
-        data[length_in_bytes],
-    };
-    if (!ftdi_write_retry(ftdi, buf, 3)) {
-      printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
-             ftdi_get_error_string(ftdi));
+    if (!mpsse_buffer_ensure_space(3))
       return false;
-    }
+    mpsse_buffer_append_byte((uint8_t)(do_read_flag | MPSSE_DO_WRITE | MPSSE_LSB |
+                             MPSSE_WRITE_NEG | MPSSE_BITMODE));
+    // length in bits -1
+    mpsse_buffer_append_byte((uint8_t)((bulk_bits % 8) - 1));
+    // data
+    mpsse_buffer_append_byte(data[length_in_bytes]);
   }
 
   if (flip_tms) {
@@ -133,25 +120,25 @@ bool mpsse_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
     state = new_state;
 
     uint8_t bit = (data[(num_bits - 1) / 8] >> ((num_bits - 1) % 8)) & 1;
-    uint8_t buf[3] = {(uint8_t)(do_read_flag | MPSSE_WRITE_TMS | MPSSE_LSB |
-                                MPSSE_BITMODE | MPSSE_WRITE_NEG),
-                      // length in bits -1
-                      0x00,
-                      // data
-                      // 7-th bit: last bit
-                      // TMS=1
-                      (uint8_t)(0x01 | (bit << 7))};
-    if (!ftdi_write_retry(ftdi, buf, 3)) {
-      printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
-             ftdi_get_error_string(ftdi));
+    if (!mpsse_buffer_ensure_space(3))
       return false;
-    }
+    mpsse_buffer_append_byte((uint8_t)(do_read_flag | MPSSE_WRITE_TMS | MPSSE_LSB |
+                             MPSSE_BITMODE | MPSSE_WRITE_NEG));
+    // length in bits -1
+    mpsse_buffer_append_byte(0x00);
+    // data
+    // 7-th bit: last bit
+    // TMS=1
+    mpsse_buffer_append_byte((uint8_t)(0x01 | (bit << 7)));
   }
 
   return true;
 }
 
 bool mpsse_jtag_scan_chain_recv(uint8_t *recv, size_t num_bits, bool flip_tms) {
+  // send all write commands
+  if (!mpsse_buffer_flush())
+    return false;
   size_t bulk_bits = num_bits;
   if (flip_tms) {
     // last bit should be sent along TMS 0->1
@@ -192,6 +179,9 @@ bool mpsse_jtag_scan_chain_recv(uint8_t *recv, size_t num_bits, bool flip_tms) {
 }
 
 bool mpsse_set_tck_freq(uint64_t freq_mhz) {
+  // send any pending commands
+  if (!mpsse_buffer_flush())
+    return false;
   // set clock to base / ((1 + 1) * 2)
   // when "divide by 5" is disabled, base clock is 60MHz
   int divisor = (60 / 2 + freq_mhz - 1) / freq_mhz - 1;
@@ -209,6 +199,9 @@ bool mpsse_set_tck_freq(uint64_t freq_mhz) {
 }
 
 bool mpsse_jtag_clock_tck(size_t times) {
+  // send any pending commands
+  if (!mpsse_buffer_flush())
+    return false;
   size_t times_8 = times / 8;
   if (times_8) {
     // Clock For n x 8 bits with no data transfer
