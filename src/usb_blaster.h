@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 // initialize usb_blaster interface of ftdi
-bool usb_blaster_init();
+bool usb_blaster_init(enum AdapterTypes adapter_type);
 bool usb_blaster_deinit();
 bool usb_blaster_set_tck_freq(uint64_t freq_mhz);
 

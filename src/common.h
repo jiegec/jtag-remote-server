@@ -36,6 +36,11 @@ enum JtagState {
   UpdateIR,
 };
 
+enum AdapterTypes {
+  Adapter_Xilinx,
+  Adapter_DigilentHS2,
+};
+
 extern JtagState state;
 extern uint64_t bits_send;
 extern uint64_t freq_mhz;
@@ -51,7 +56,7 @@ const char *state_to_string(JtagState state);
 
 // functions for adapter driver
 struct driver {
-  bool (*init)();
+  bool (*init)(enum AdapterTypes adapter_type);
   bool (*deinit)();
   bool (*set_tck_freq)(uint64_t freq_mhz);
 
@@ -65,7 +70,7 @@ struct driver {
 extern driver *adapter;
 
 // adapter operations
-bool adapter_init();
+bool adapter_init(enum AdapterTypes adapter_type);
 bool adapter_deinit();
 bool adapter_set_tck_freq(uint64_t freq_mhz);
 

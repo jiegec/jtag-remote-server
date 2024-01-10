@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 // initialize mpsse interface of ftdi
-bool mpsse_init();
+bool mpsse_init(enum AdapterTypes adapter_type);
 bool mpsse_deinit();
 bool mpsse_set_tck_freq(uint64_t freq_mhz);
 

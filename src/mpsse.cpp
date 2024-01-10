@@ -6,7 +6,7 @@
 
 static struct ftdi_context *ftdi;
 
-bool mpsse_init() {
+bool mpsse_init(enum AdapterTypes adapter_type) {
   printf("Initialize ftdi\n");
   ftdi = ftdi_new();
   assert(ftdi);
@@ -39,8 +39,29 @@ bool mpsse_init() {
   printf("Enable mpsse\n");
   ftdi_set_bitmode(ftdi, 0, 0);
   ftdi_set_bitmode(ftdi, 0, BITMODE_MPSSE);
+  
+  uint16_t initialOutput = 0;
+  uint16_t direction = 0;
+  switch(adapter_type) {
+  case Adapter_Xilinx:
+    initialOutput = 0x0088;
+    direction = 0x008b;
+    break;
+  case Adapter_DigilentHS2:
+    initialOutput = 0x00e8;
+    direction = 0x60eb;
+    break;
+  default:
+    printf("Unhandled adapter %d\n", adapter_type);
+    break;
+  }
 
-  uint8_t setup[256] = {SET_BITS_LOW,  0x88, 0x8b, SET_BITS_HIGH, 0, 0,
+  uint8_t setup[256] = {SET_BITS_LOW,
+                        (uint8_t)(initialOutput & 0xff),
+                        (uint8_t)(direction & 0xff),
+                        SET_BITS_HIGH,
+                        (uint8_t)(initialOutput >> 8),
+                        (uint8_t)(direction >> 8),
                         SEND_IMMEDIATE};
   if (!ftdi_write_retry(ftdi, setup, 7)) {
     printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
