@@ -2,6 +2,7 @@
 #include "mpsse.h"
 #include <assert.h>
 #include <stdarg.h>
+#include <sys/select.h>
 
 driver *adapter = &mpsse_driver;
 
@@ -220,6 +221,15 @@ bool setup_tcp_server(uint16_t port) {
 }
 
 bool try_accept() {
+  struct timeval timeout;
+  timeout.tv_sec = 1;
+  timeout.tv_usec = 0;
+  fd_set rfds;
+  FD_ZERO(&rfds);
+  FD_SET(listen_fd, &rfds);
+  if (select(listen_fd + 1, &rfds, (fd_set *) 0, (fd_set *) 0, &timeout) <= 0)
+    return false;
+
   // accept connection
   client_fd = accept(listen_fd, NULL, NULL);
   if (client_fd > 0) {
