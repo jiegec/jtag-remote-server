@@ -18,6 +18,7 @@ bool debug = false;
 int ftdi_vid = 0x0403;
 int ftdi_pid = 0x6011;
 enum ftdi_interface ftdi_channel = INTERFACE_A;
+enum AdapterTypes adapter_type = Adapter_Xilinx;
 bool stop = false;
 uint64_t bits_send = 0;
 uint64_t freq_mhz = 15;
@@ -46,7 +47,7 @@ int main(int argc, char *argv[]) {
   // https://man7.org/linux/man-pages/man3/getopt.3.html
   int opt;
   Protocol proto = Protocol::VPI;
-  while ((opt = getopt(argc, argv, "dvrxjbc:V:p:f:")) != -1) {
+  while ((opt = getopt(argc, argv, "dvrxjbc:V:p:f:a:")) != -1) {
     switch (opt) {
     case 'd':
       debug = true;
@@ -62,6 +63,18 @@ int main(int argc, char *argv[]) {
       break;
     case 'j':
       proto = Protocol::JTAGD;
+      break;
+    case 'a':
+      if (strcmp(optarg, "Xilinx") == 0) {
+        adapter_type = Adapter_Xilinx;
+      }
+      else if (strcmp(optarg, "hs2") == 0) {
+        ftdi_pid = 0x6014;
+        adapter_type = Adapter_DigilentHS2;
+      }
+      else {
+        printf("Unknown adapter\n");
+      }
       break;
     case 'b':
       adapter = &usb_blaster_driver;
@@ -88,6 +101,7 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "\t-r: Use remote bitbang protocol\n");
       fprintf(stderr, "\t-x: Use xilinx virtual cable protocol\n");
       fprintf(stderr, "\t-j: Use intel jtag server protocol\n");
+      fprintf(stderr, "\t-a Xilinx|hs2: Use Xilinx (default) or Digilent HS2 adapter\n");
       fprintf(stderr, "\t-b: Use USB Blaster adapter\n");
       fprintf(stderr, "\t-c A|B|C|D: Select ftdi channel\n");
       fprintf(stderr, "\t-V VID: Specify usb vid\n");
@@ -97,7 +111,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (!adapter_init()) {
+  if (!adapter_init(adapter_type)) {
     return 1;
   }
 

@@ -39,7 +39,7 @@ uint8_t build_command(int tms, int tdi, int tck, bool read) {
   return command;
 }
 
-bool usb_blaster_init() {
+bool usb_blaster_init(enum AdapterTypes adapter_type) {
   printf("Initialize ftdi\n");
   ftdi = ftdi_new();
   assert(ftdi);

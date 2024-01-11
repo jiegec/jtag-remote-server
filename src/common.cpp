@@ -460,7 +460,7 @@ bool jtag_tms_seq_to(JtagState to) {
   }
 }
 
-bool adapter_init() { return adapter->init(); }
+bool adapter_init(enum AdapterTypes adapter_type) { return adapter->init(adapter_type); }
 
 bool adapter_deinit() { return adapter->deinit(); }
 
