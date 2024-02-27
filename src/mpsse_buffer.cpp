@@ -29,6 +29,10 @@ bool mpsse_buffer_flush() {
   return true;
 }
 
+bool mpsse_buffer_is_empty() {
+  return mpsse_buffer_pos == 0;
+}
+
 bool mpsse_buffer_ensure_space(size_t num_bytes) {
   if (num_bytes >= BUFFER_LENGTH) {
     printf("MPSSE buffer too small\n");
