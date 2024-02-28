@@ -51,6 +51,10 @@ bool mpsse_init(enum AdapterTypes adapter_type) {
     initialOutput = 0x00e8;
     direction = 0x60eb;
     break;
+  case Adapter_DigilentHS3:
+    initialOutput = 0x0088;
+    direction = 0x008b;
+    break;
   default:
     printf("Unhandled adapter %d\n", adapter_type);
     break;

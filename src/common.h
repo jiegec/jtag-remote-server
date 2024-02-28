@@ -39,6 +39,7 @@ enum JtagState {
 enum AdapterTypes {
   Adapter_Xilinx,
   Adapter_DigilentHS2,
+  Adapter_DigilentHS3,
 };
 
 extern JtagState state;

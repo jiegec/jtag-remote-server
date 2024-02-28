@@ -72,6 +72,10 @@ int main(int argc, char *argv[]) {
         ftdi_pid = 0x6014;
         adapter_type = Adapter_DigilentHS2;
       }
+      else if (strcmp(optarg, "hs3") == 0) {
+        ftdi_pid = 0x6014;
+        adapter_type = Adapter_DigilentHS3;
+      }
       else {
         printf("Unknown adapter\n");
       }
@@ -101,7 +105,7 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "\t-r: Use remote bitbang protocol\n");
       fprintf(stderr, "\t-x: Use xilinx virtual cable protocol\n");
       fprintf(stderr, "\t-j: Use intel jtag server protocol\n");
-      fprintf(stderr, "\t-a Xilinx|hs2: Use Xilinx (default) or Digilent HS2 adapter\n");
+      fprintf(stderr, "\t-a Xilinx|hs2|hs3: Use Xilinx (default) or Digilent HS2/HS3 adapter\n");
       fprintf(stderr, "\t-b: Use USB Blaster adapter\n");
       fprintf(stderr, "\t-c A|B|C|D: Select ftdi channel\n");
       fprintf(stderr, "\t-V VID: Specify usb vid\n");

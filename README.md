@@ -22,6 +22,7 @@ Supported adapters:
 
 - FT2232/FT4232 based Xilinx cables
 - USB Blaster
+- Digilent HS2/HS3
 
 Some example OpenOCD configs are provided under `examples` directory.
 
