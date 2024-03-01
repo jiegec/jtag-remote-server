@@ -51,6 +51,10 @@ bool mpsse_init(enum AdapterTypes adapter_type) {
     initialOutput = 0x00e8;
     direction = 0x60eb;
     break;
+  case Adapter_DigilentHS3:
+    initialOutput = 0x0088;
+    direction = 0x008b;
+    break;
   default:
     printf("Unhandled adapter %d\n", adapter_type);
     break;
@@ -158,13 +162,16 @@ bool mpsse_jtag_scan_chain_send(const uint8_t *data, size_t num_bits,
 }
 
 bool mpsse_jtag_scan_chain_recv(uint8_t *recv, size_t num_bits, bool flip_tms) {
-  if (!mpsse_buffer_ensure_space(1))
-    return false;
-  // flush FTDI buffers after all write commands are sent
-  mpsse_buffer_append_byte(SEND_IMMEDIATE);
-  // send all write commands
-  if (!mpsse_buffer_flush())
-    return false;
+  if (!mpsse_buffer_is_empty())
+  {
+    if (!mpsse_buffer_ensure_space(1))
+      return false;
+    // flush FTDI buffers after all write commands are sent
+    mpsse_buffer_append_byte(SEND_IMMEDIATE);
+    // send all write commands
+    if (!mpsse_buffer_flush())
+      return false;
+  }
   size_t bulk_bits = num_bits;
   if (flip_tms) {
     // last bit should be sent along TMS 0->1

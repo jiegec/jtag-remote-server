@@ -3,7 +3,8 @@
 #include "common.h"
 #include "ftdi.h"
 
-#define BUFFER_LENGTH 16384
+#define BUFFER_LENGTH 8192
+#define MAX_TRANSFER_LENGTH 2048
 static uint8_t mpsse_buffer[BUFFER_LENGTH];
 static size_t mpsse_buffer_pos = 0;
 static struct ftdi_context* mpsse_ftdi = NULL;
@@ -28,13 +29,19 @@ bool mpsse_buffer_flush() {
   return true;
 }
 
+bool mpsse_buffer_is_empty() {
+  return mpsse_buffer_pos == 0;
+}
+
 bool mpsse_buffer_ensure_space(size_t num_bytes) {
   if (num_bytes >= BUFFER_LENGTH) {
     printf("MPSSE buffer too small\n");
     return false;
   }
-  if(mpsse_buffer_pos + num_bytes >= BUFFER_LENGTH)
+  if(mpsse_buffer_pos + num_bytes >= MAX_TRANSFER_LENGTH)
+  {
     return mpsse_buffer_flush();
+  }
   return true;
 }
 

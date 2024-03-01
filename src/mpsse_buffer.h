@@ -9,5 +9,6 @@ bool mpsse_buffer_ensure_space(size_t num_bytes);
 void mpsse_buffer_append_byte(uint8_t data);
 void mpsse_buffer_append(const uint8_t* data, size_t num_bytes);
 bool mpsse_buffer_flush();
+bool mpsse_buffer_is_empty();
 
 #endif
