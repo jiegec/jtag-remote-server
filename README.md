@@ -22,7 +22,7 @@ Supported adapters:
 
 - FT2232/FT4232 based Xilinx cables
 - USB Blaster
-- Digilent HS2/HS3
+- Digilent HS2/HS3 (Specify via `-a hs2` or `-a hs3`)
 
 Some example OpenOCD configs are provided under `examples` directory.
 
@@ -30,15 +30,15 @@ Some example OpenOCD configs are provided under `examples` directory.
 
 For example, you use MacBook and Arty A7 for FPGA development, you can:
 
-1. Run this tool with xvc interface (ftdi chip here has pid=0x6010): `./jtag-remote-server -p 6010 -x`
+1. Run this tool with xvc interface (ftdi chip here has pid=0x6010): `./jtag-remote-server -p 6010 -x` (`-p 6010` means pid=0x6010, `-x` means Xilinx Virtual Cable)
 2. Use ssh to forward local port to Linux server: `ssh -R 2542:127.0.0.1:2542 server`
 3. Add Xilinx Virtual Cable in Xilinx: 127.0.0.1:2542
 
 Then you can find `xc7a35t` device in Xilinx and you can debug remotely.
 
-For USB Blaster: `./jtag-remote-server -V 09fb -p 6001 -b`.
+For USB Blaster: `./jtag-remote-server -V 09fb -p 6001 -b`(`-V 09fb` means vid=0x09fb, `-p 6001` means pid=0x6001, `-b` means USB Blaster).
 
-When there are multiple FTDI devices on the same system it is possible to select a specific one using it's USB bus and device ID: `./jtag-remote-server -B 1 -D 2 -x` 
+When there are multiple FTDI devices on the same system it is possible to select a specific one using it's USB bus and device ID: `./jtag-remote-server -B 1 -D 2`(`-B 1` means USB bus 1, `-D 2` means USB device 2).
 
 ## Performance
 
