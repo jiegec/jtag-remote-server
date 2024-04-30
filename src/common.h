@@ -51,6 +51,10 @@ extern int ftdi_vid;
 extern int ftdi_pid;
 extern enum ftdi_interface ftdi_channel;
 
+extern bool use_bus_addr;
+extern uint8_t usb_bus_addr;
+extern uint8_t usb_dev_addr;
+
 // jtag state transition
 JtagState next_state(JtagState cur, int bit);
 const char *state_to_string(JtagState state);

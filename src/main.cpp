@@ -27,6 +27,10 @@ uint8_t buffer[BUFFER_SIZE];
 size_t buffer_begin = 0;
 size_t buffer_end = 0;
 
+bool use_bus_addr     = false;
+uint8_t usb_bus_addr  = 1;
+uint8_t usb_dev_addr  = 1;
+
 void sigint_handler(int sig) {
   printf("Gracefully shutdown\n");
   stop = true;
@@ -47,7 +51,7 @@ int main(int argc, char *argv[]) {
   // https://man7.org/linux/man-pages/man3/getopt.3.html
   int opt;
   Protocol proto = Protocol::VPI;
-  while ((opt = getopt(argc, argv, "dvrxjbc:V:p:f:a:")) != -1) {
+  while ((opt = getopt(argc, argv, "dvrxjbc:V:p:f:a:B:D:")) != -1) {
     switch (opt) {
     case 'd':
       debug = true;
@@ -89,10 +93,20 @@ int main(int argc, char *argv[]) {
       }
       break;
     case 'V':
+      use_bus_addr = false;
       sscanf(optarg, "%x", &ftdi_vid);
       break;
     case 'p':
+      use_bus_addr = false;
       sscanf(optarg, "%x", &ftdi_pid);
+      break;
+    case 'B':
+      use_bus_addr = true;
+      sscanf(optarg, "%" SCNu8, &usb_bus_addr);
+      break;
+    case 'D':
+      use_bus_addr = true;
+      sscanf(optarg, "%" SCNu8, &usb_dev_addr);
       break;
     case 'f':
       sscanf(optarg, "%" SCNu64, &freq_mhz);
@@ -110,6 +124,8 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "\t-c A|B|C|D: Select ftdi channel\n");
       fprintf(stderr, "\t-V VID: Specify usb vid\n");
       fprintf(stderr, "\t-p PID: Specify usb pid\n");
+      fprintf(stderr, "\t-B BUS: Specify usb bus addr\n");
+      fprintf(stderr, "\t-D DEV: Specify usb device addr\n");
       fprintf(stderr, "\t-f FREQ: Specify jtag clock frequency in MHz\n");
       return 1;
     }
