@@ -48,6 +48,9 @@ int main(int argc, char *argv[]) {
   signal(SIGINT, sigint_handler);
   signal(SIGPIPE, SIG_IGN);
 
+  bool usb_vid_pid_used = false;
+  bool usb_bus_dev_used = false;
+
   // https://man7.org/linux/man-pages/man3/getopt.3.html
   int opt;
   Protocol proto = Protocol::VPI;
@@ -93,19 +96,21 @@ int main(int argc, char *argv[]) {
       }
       break;
     case 'V':
-      use_bus_addr = false;
+      usb_vid_pid_used = true;
       sscanf(optarg, "%x", &ftdi_vid);
       break;
     case 'p':
-      use_bus_addr = false;
+      usb_vid_pid_used = true;
       sscanf(optarg, "%x", &ftdi_pid);
       break;
     case 'B':
-      use_bus_addr = true;
+      use_bus_addr     = true;
+      usb_bus_dev_used = true;
       sscanf(optarg, "%" SCNu8, &usb_bus_addr);
       break;
     case 'D':
-      use_bus_addr = true;
+      use_bus_addr     = true;
+      usb_bus_dev_used = true;
       sscanf(optarg, "%" SCNu8, &usb_dev_addr);
       break;
     case 'f':
@@ -129,6 +134,11 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "\t-f FREQ: Specify jtag clock frequency in MHz\n");
       return 1;
     }
+  }
+
+  if (usb_vid_pid_used && usb_bus_dev_used) {
+    fprintf(stderr, "Cannot use PID/VID and BUS/DEV at the same time!\n");
+    return 1;
   }
 
   if (!adapter_init(adapter_type)) {
