@@ -19,8 +19,16 @@ bool mpsse_init(enum AdapterTypes adapter_type) {
     return false;
   }
 
-  printf("Open device vid=0x%04x pid=0x%04x\n", ftdi_vid, ftdi_pid);
-  ret = ftdi_usb_open(ftdi, ftdi_vid, ftdi_pid);
+  if(use_bus_addr) {
+    printf("Open device bus=0x%04x dev=0x%04x\n", usb_bus_addr, usb_dev_addr);
+    ret = ftdi_usb_open_bus_addr(ftdi, usb_bus_addr, usb_dev_addr);
+  }
+  else {
+    printf("Open device vid=0x%04x pid=0x%04x\n", ftdi_vid, ftdi_pid);
+    ret = ftdi_usb_open(ftdi, ftdi_vid, ftdi_pid);
+  }
+
+
   if (ret) {
     printf("Error @ %s:%d : %s\n", __FILE__, __LINE__,
            ftdi_get_error_string(ftdi));

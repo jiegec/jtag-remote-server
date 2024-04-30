@@ -27,6 +27,10 @@ uint8_t buffer[BUFFER_SIZE];
 size_t buffer_begin = 0;
 size_t buffer_end = 0;
 
+bool use_bus_addr     = false;
+uint8_t usb_bus_addr  = 1;
+uint8_t usb_dev_addr  = 1;
+
 void sigint_handler(int sig) {
   printf("Gracefully shutdown\n");
   stop = true;
@@ -44,10 +48,13 @@ int main(int argc, char *argv[]) {
   signal(SIGINT, sigint_handler);
   signal(SIGPIPE, SIG_IGN);
 
+  bool usb_vid_pid_used = false;
+  bool usb_bus_dev_used = false;
+
   // https://man7.org/linux/man-pages/man3/getopt.3.html
   int opt;
   Protocol proto = Protocol::VPI;
-  while ((opt = getopt(argc, argv, "dvrxjbc:V:p:f:a:")) != -1) {
+  while ((opt = getopt(argc, argv, "dvrxjbc:V:p:f:a:B:D:")) != -1) {
     switch (opt) {
     case 'd':
       debug = true;
@@ -89,10 +96,22 @@ int main(int argc, char *argv[]) {
       }
       break;
     case 'V':
+      usb_vid_pid_used = true;
       sscanf(optarg, "%x", &ftdi_vid);
       break;
     case 'p':
+      usb_vid_pid_used = true;
       sscanf(optarg, "%x", &ftdi_pid);
+      break;
+    case 'B':
+      use_bus_addr     = true;
+      usb_bus_dev_used = true;
+      sscanf(optarg, "%" SCNu8, &usb_bus_addr);
+      break;
+    case 'D':
+      use_bus_addr     = true;
+      usb_bus_dev_used = true;
+      sscanf(optarg, "%" SCNu8, &usb_dev_addr);
       break;
     case 'f':
       sscanf(optarg, "%" SCNu64, &freq_mhz);
@@ -110,9 +129,16 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "\t-c A|B|C|D: Select ftdi channel\n");
       fprintf(stderr, "\t-V VID: Specify usb vid\n");
       fprintf(stderr, "\t-p PID: Specify usb pid\n");
+      fprintf(stderr, "\t-B BUS: Specify usb bus addr\n");
+      fprintf(stderr, "\t-D DEV: Specify usb device addr\n");
       fprintf(stderr, "\t-f FREQ: Specify jtag clock frequency in MHz\n");
       return 1;
     }
+  }
+
+  if (usb_vid_pid_used && usb_bus_dev_used) {
+    fprintf(stderr, "Cannot use PID/VID and BUS/DEV at the same time!\n");
+    return 1;
   }
 
   if (!adapter_init(adapter_type)) {

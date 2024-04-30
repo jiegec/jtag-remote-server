@@ -38,6 +38,8 @@ Then you can find `xc7a35t` device in Xilinx and you can debug remotely.
 
 For USB Blaster: `./jtag-remote-server -V 09fb -p 6001 -b`.
 
+When there are multiple FTDI devices on the same system it is possible to select a specific one using it's USB bus and device ID: `./jtag-remote-server -B 1 -D 2 -x` 
+
 ## Performance
 
 Some testing reveals that this tool can run at 14Mbps(rbb mode)/4Mbps(jtag_vpi mode)/3Mbps(xvc mode) when programming bitstream to FPGA. The speed of 14Mbps is mainly limited by the 15MHz jtag clock and could be improved by using a faster clock if the jtag tap can work under 30MHz(maximum clock frequency is 60MHz / 2). As per DS893, maximum TCK frequency of Xilinx Virtex Ultrascale devices is 20MHz(SLR-based) or 50MHz(others).
