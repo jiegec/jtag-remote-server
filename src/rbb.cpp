@@ -11,11 +11,11 @@ bool jtag_rbb_init() {
 
 void jtag_rbb_tick() {
   if (client_fd >= 0) {
-    char tms_input[BUFFER_SIZE];
-    char tdi_input[BUFFER_SIZE];
-    char read_input[BUFFER_SIZE];
-    char read_buffer[BUFFER_SIZE];
-    char send_buffer[BUFFER_SIZE];
+    uint8_t tms_input[BUFFER_SIZE];
+    uint8_t tdi_input[BUFFER_SIZE];
+    uint8_t read_input[BUFFER_SIZE];
+    uint8_t read_buffer[BUFFER_SIZE];
+    uint8_t send_buffer[BUFFER_SIZE];
 
     ssize_t num_read = read(client_fd, read_buffer, sizeof(read_buffer));
     if (num_read <= 0) {
@@ -32,10 +32,10 @@ void jtag_rbb_tick() {
     memset(tdi_input, 0, (num_read + 7) / 8);
     memset(read_input, 0, (num_read + 7) / 8);
     for (int i = 0; i < num_read; i++) {
-      char command = read_buffer[i];
+      uint8_t command = read_buffer[i];
       if ('0' <= command && command <= '7') {
         // set
-        char offset = command - '0';
+        uint8_t offset = command - '0';
         int tck = (offset >> 2) & 1;
         int tms = (offset >> 1) & 1;
         int tdi = (offset >> 0) & 1;
@@ -57,13 +57,13 @@ void jtag_rbb_tick() {
     }
 
     dprintf(" tms:");
-    print_bitvec((unsigned char *)tms_input, bits);
+    print_bitvec(tms_input, bits);
     dprintf("\n");
     dprintf(" tdi:");
-    print_bitvec((unsigned char *)tdi_input, bits);
+    print_bitvec(tdi_input, bits);
     dprintf("\n");
     dprintf("read:");
-    print_bitvec((unsigned char *)read_input, bits);
+    print_bitvec(read_input, bits);
     dprintf("\n");
 
     JtagState cur_state = state;

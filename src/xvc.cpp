@@ -56,8 +56,8 @@ struct ShiftCommand {
   std::vector<Region> regions;
 };
 
-char tms[BUFFER_SIZE];
-char tdi[BUFFER_SIZE];
+uint8_t tms[BUFFER_SIZE];
+uint8_t tdi[BUFFER_SIZE];
 uint8_t tdo[BUFFER_SIZE] = {};
 void jtag_xvc_tick() {
   if (client_fd >= 0) {
@@ -110,10 +110,10 @@ void jtag_xvc_tick() {
         buffer_begin += total_len;
 
         dprintf(" tms:");
-        print_bitvec((unsigned char *)tms, bits);
+        print_bitvec(tms, bits);
         dprintf("\n");
         dprintf(" tdi:");
-        print_bitvec((unsigned char *)tdi, bits);
+        print_bitvec(tdi, bits);
         dprintf("\n");
 
         // send tms & read
